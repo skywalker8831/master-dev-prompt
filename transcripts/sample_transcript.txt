@@ -1,0 +1,20 @@
+We need to build an AI-powered SMS ordering system for Dear Saigon restaurant.
+Customers should be able to text in their order, get a confirmation, and have it
+sent to the kitchen automatically via our POS integration.
+
+Stack is n8n for workflow automation, Twilio for SMS, OpenAI for intent parsing,
+and Google Sheets as our menu data source for now.
+
+Alice will own the Twilio webhook setup and A2P 10DLC registration.
+Bob is handling the n8n workflow design and the OpenAI prompt engineering.
+We need this live within 3 weeks for the soft launch.
+
+Main risks: A2P registration can take 2-4 weeks, which could block SMS entirely.
+Fallback is to use a long code temporarily. Also unsure if Google Sheets can
+handle concurrent reads under load — might need to move to Supabase later.
+
+Decisions made: We'll use claude-sonnet for classification, gpt-4o for order
+parsing since it handles structured extraction better. Menu will stay in Sheets
+for v1. Twilio phone number already purchased: +1 (314) 408-6471.
+
+Open question: Do we need a human handoff flow for complex orders or edge cases?

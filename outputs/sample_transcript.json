@@ -1,0 +1,57 @@
+
+{
+	"design_doc": {
+		"context_problem": "Convert a transcript into a structured design and plan.",
+		"requirements_constraints": "Output must match the strict JSON schema used by CI.",
+		"proposed_architecture": "Single prompt -> model -> JSON output validated by script.",
+		"alternatives": "Manual authoring or different schema versions.",
+		"decisions": "Produce a minimal example file for local validation when model CLI is unavailable.",
+		"open_questions_risks": "Model CLI not available in environment; CI requires real outputs for full validation."
+	},
+	"pm_summary": {
+		"overview": "A minimal sample that demonstrates the required JSON structure.",
+		"scope": "Includes design_doc, pm_summary, actions, implementation_plan, code_suggestions.",
+		"implications_for_timeline": "This is a short-running developer task to unblock local validation."
+	},
+	"actions": {
+		"items": [
+			{
+				"description": "Create minimal sample JSON for validator",
+				"owner": "dev",
+				"priority": "medium",
+				"type": "feature"
+			}
+		]
+	},
+	"implementation_plan": {
+		"overview": "Deliver a valid JSON example to satisfy `validate_output.py`.",
+		"milestones": [
+			{
+				"name": "create-sample",
+				"description": "Write and validate minimal sample JSON",
+				"eta_guess": "1m",
+				"risks": "none"
+			}
+		],
+		"tech_tasks": [
+			{
+				"area": "backend",
+				"description": "Write sample outputs/sample.json",
+				"depends_on": [],
+				"complexity": "S"
+			}
+		]
+	},
+	"code_suggestions": {
+		"language": "python",
+		"stack_context": "Simple CLI + validator",
+		"snippets": [
+			{
+				"title": "hello-example",
+				"purpose": "show minimal runnable snippet",
+				"code": "print(\"hello\")",
+				"notes": "Not used by validator; included for completeness."
+			}
+		]
+	}
+}

@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGNAL · Master Dev Prompt</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:       #09090b;
+            --surface:  #111113;
+            --surface2: #18181b;
+            --border:   #27272a;
+            --text:     #e4e4e7;
+            --muted:    #52525b;
+            --amber:    #f59e0b;
+            --cyan:     #06b6d4;
+            --green:    #22c55e;
+            --purple:   #a855f7;
+            --blue:     #3b82f6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 22px;
+            letter-spacing: 3px;
+            color: var(--amber);
+        }
+        .logo em {
+            font-style: normal;
+            color: var(--muted);
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+
+        .badge {
+            font-size: 11px;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 3px 10px;
+        }
+
+        main { max-width: 1100px; margin: 0 auto; padding: 32px; }
+
+        .row-label {
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .row-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        textarea {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            padding: 16px;
+            resize: vertical;
+            min-height: 150px;
+            outline: none;
+            line-height: 1.7;
+            transition: border-color 0.15s;
+        }
+        textarea:focus { border-color: var(--amber); }
+        textarea::placeholder { color: var(--muted); }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-top: 10px;
+        }
+
+        #process-btn {
+            background: var(--amber);
+            color: #000;
+            border: none;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 16px;
+            letter-spacing: 3px;
+            padding: 9px 28px;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        #process-btn:hover { opacity: 0.85; }
+        #process-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        .hint { font-size: 11px; color: var(--muted); }
+
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            color: var(--amber);
+            font-size: 12px;
+        }
+        .loading.on { display: flex; }
+
+        .dots span { animation: blink 1.2s infinite; }
+        .dots span:nth-child(2) { animation-delay: 0.2s; }
+        .dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { 0%,80%,100%{opacity:.15} 40%{opacity:1} }
+
+        .error-box {
+            display: none;
+            background: #1c0a0a;
+            border: 1px solid #7f1d1d;
+            color: #fca5a5;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .error-box.on { display: block; }
+
+        /* ── output ────────────────────────────────────── */
+        #output-wrap { display: none; margin-top: 28px; }
+        #output-wrap.on { display: block; }
+
+        .section {
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+            animation: slideIn 0.25s ease both;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .sec-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 14px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            user-select: none;
+        }
+        .sec-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .sec-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 14px;
+            letter-spacing: 2.5px;
+            flex: 1;
+        }
+        .sec-arrow { color: var(--muted); font-size: 11px; }
+
+        .sec-body { padding: 14px; background: var(--bg); }
+
+        /* fields */
+        .fld { margin-bottom: 14px; }
+        .fld:last-child { margin-bottom: 0; }
+        .fld-key {
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .fld-val { color: var(--text); line-height: 1.7; white-space: pre-wrap; }
+
+        /* action items */
+        .item-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: start;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            margin-bottom: 7px;
+        }
+        .item-row:last-child { margin-bottom: 0; }
+        .item-desc { margin-bottom: 4px; }
+        .item-owner { color: var(--muted); font-size: 11px; }
+        .tags { display: flex; gap: 5px; flex-wrap: wrap; }
+
+        .tag {
+            font-size: 10px;
+            padding: 2px 6px;
+            white-space: nowrap;
+        }
+        .t-hi { background: #7f1d1d; color: #fca5a5; }
+        .t-me { background: #713f12; color: #fcd34d; }
+        .t-lo { background: #14532d; color: #86efac; }
+        .t-S  { background: #14532d; color: #86efac; }
+        .t-M  { background: #713f12; color: #fcd34d; }
+        .t-L  { background: #7f1d1d; color: #fca5a5; }
+        .t-plain { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+        /* milestones / tech tasks */
+        .ms-row {
+            border: 1px solid var(--border);
+            background: var(--surface);
+            padding: 10px 12px;
+            margin-bottom: 7px;
+        }
+        .ms-name { color: var(--purple); font-weight: 500; margin-bottom: 4px; }
+        .ms-meta { display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+        .task-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: start;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            padding: 9px 12px;
+            margin-bottom: 7px;
+        }
+
+        .sub-label {
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin: 12px 0 7px;
+        }
+        .sub-label:first-child { margin-top: 0; }
+
+        /* code */
+        .snippet {
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+        .snippet:last-child { margin-bottom: 0; }
+        .snip-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface2);
+            gap: 12px;
+        }
+        .snip-title { color: var(--blue); font-weight: 500; }
+        .snip-purpose { color: var(--muted); font-size: 11px; margin-top: 2px; }
+        .copy-btn {
+            flex-shrink: 0;
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 3px 8px;
+            cursor: pointer;
+            transition: color 0.1s, border-color 0.1s;
+            letter-spacing: 0;
+        }
+        .copy-btn:hover { color: var(--text); border-color: var(--text); }
+        .code-block {
+            padding: 14px;
+            overflow-x: auto;
+            white-space: pre;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #a5b4fc;
+            max-height: 380px;
+            overflow-y: auto;
+        }
+        .snip-notes {
+            padding: 8px 12px;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 11px;
+        }
+        .stack-line {
+            margin-bottom: 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .stack-ctx { color: var(--muted); font-size: 12px; }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); }
+    </style>
+</head>
+<body>
+<header>
+    <div>
+        <div class="logo">SIGNAL <em>· MASTER DEV PROMPT</em></div>
+    </div>
+    <div class="badge">buildagentic · McDis Framework</div>
+</header>
+
+<main>
+    <div class="row-label">transcript</div>
+    <textarea id="tx" placeholder="Paste a meeting transcript…&#10;&#10;We need to build an AI-powered SMS ordering system for Dear Saigon restaurant..."></textarea>
+
+    <div class="controls">
+        <button id="process-btn" onclick="run()">PROCESS ▸</button>
+        <div class="loading" id="loading">
+            <div class="dots"><span>▪</span><span>▪</span><span>▪</span></div>
+            <span id="loading-label">generating</span>
+        </div>
+        <span class="hint" id="hint">ctrl+enter to submit</span>
+    </div>
+    <div class="error-box" id="err"></div>
+
+    <div id="stream-wrap" style="display:none;margin-top:16px">
+        <div class="row-label">generating</div>
+        <div id="stream-out" style="background:var(--surface);border:1px solid var(--border);padding:14px;font-size:11px;line-height:1.6;color:var(--muted);max-height:120px;overflow-y:auto;white-space:pre-wrap;word-break:break-all"></div>
+    </div>
+
+    <div id="output-wrap">
+        <div class="row-label">artifacts</div>
+        <div id="sections"></div>
+    </div>
+</main>
+
+<script>
+async function run() {
+    const tx = document.getElementById('tx').value.trim();
+    if (!tx) return;
+
+    const btn = document.getElementById('process-btn');
+    const loading = document.getElementById('loading');
+    const hint = document.getElementById('hint');
+    const err = document.getElementById('err');
+    const wrap = document.getElementById('output-wrap');
+    const streamWrap = document.getElementById('stream-wrap');
+    const streamOut = document.getElementById('stream-out');
+
+    btn.disabled = true;
+    loading.classList.add('on');
+    hint.textContent = '';
+    err.classList.remove('on');
+    wrap.classList.remove('on');
+    streamWrap.style.display = 'block';
+    streamOut.textContent = '';
+
+    try {
+        const res = await fetch('/process/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transcript: tx }),
+        });
+        if (!res.ok) {
+            const e = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(e.detail || `HTTP ${res.status}`);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep incomplete line
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const msg = JSON.parse(line.slice(6));
+
+                if (msg.chunk) {
+                    streamOut.textContent += msg.chunk;
+                    streamOut.scrollTop = streamOut.scrollHeight;
+                } else if (msg.done && msg.result) {
+                    streamWrap.style.display = 'none';
+                    render(msg.result);
+                    wrap.classList.add('on');
+                    hint.textContent = '✓ done';
+                } else if (msg.error) {
+                    throw new Error(`parse error: ${msg.error}`);
+                }
+            }
+        }
+    } catch (e) {
+        streamWrap.style.display = 'none';
+        err.textContent = `Error: ${e.message}`;
+        err.classList.add('on');
+        hint.textContent = '';
+    } finally {
+        btn.disabled = false;
+        loading.classList.remove('on');
+    }
+}
+
+function esc(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toggle(id) {
+    const b = document.getElementById(id);
+    const a = document.getElementById(id + 'a');
+    const hidden = b.style.display === 'none';
+    b.style.display = hidden ? 'block' : 'none';
+    a.textContent = hidden ? '▾' : '▸';
+}
+
+function copyCode(id) {
+    const el = document.getElementById(id);
+    navigator.clipboard.writeText(el.textContent).then(() => {
+        const btn = document.querySelector(`[data-cp="${id}"]`);
+        if (btn) { btn.textContent = 'copied'; setTimeout(() => btn.textContent = 'copy', 1500); }
+    });
+}
+
+function section(title, color, bodyHtml, delay) {
+    const id = `sb-${Math.random().toString(36).slice(2)}`;
+    return `
+    <div class="section" style="animation-delay:${delay}ms">
+        <div class="sec-head" onclick="toggle('${id}')">
+            <div class="sec-dot" style="background:${color}"></div>
+            <div class="sec-title" style="color:${color}">${title}</div>
+            <div class="sec-arrow" id="${id}a">▾</div>
+        </div>
+        <div class="sec-body" id="${id}">${bodyHtml}</div>
+    </div>`;
+}
+
+function fields(pairs) {
+    return pairs.filter(([,v]) => v).map(([k,v]) =>
+        `<div class="fld"><div class="fld-key">${k}</div><div class="fld-val">${esc(v)}</div></div>`
+    ).join('');
+}
+
+function render(d) {
+    let html = '';
+
+    // Design doc
+    const dd = fields([
+        ['context / problem', d.design_doc?.context_problem],
+        ['requirements & constraints', d.design_doc?.requirements_constraints],
+        ['proposed architecture', d.design_doc?.proposed_architecture],
+        ['alternatives', d.design_doc?.alternatives],
+        ['decisions', d.design_doc?.decisions],
+        ['open questions & risks', d.design_doc?.open_questions_risks],
+    ]);
+    if (dd) html += section('DESIGN DOC', '#f59e0b', dd, 0);
+
+    // PM summary
+    const pm = fields([
+        ['overview', d.pm_summary?.overview],
+        ['scope', d.pm_summary?.scope],
+        ['timeline implications', d.pm_summary?.implications_for_timeline],
+    ]);
+    if (pm) html += section('PM SUMMARY', '#06b6d4', pm, 60);
+
+    // Actions
+    const items = (d.actions?.items || []).filter(i => i.description);
+    if (items.length) {
+        const body = items.map(i => `
+            <div class="item-row">
+                <div>
+                    <div class="item-desc">${esc(i.description)}</div>
+                    ${i.owner ? `<div class="item-owner">→ ${esc(i.owner)}</div>` : ''}
+                </div>
+                <div class="tags">
+                    ${i.priority === 'high' ? `<span class="tag t-hi">high</span>` : ''}
+                    ${i.priority === 'medium' ? `<span class="tag t-me">medium</span>` : ''}
+                    ${i.priority === 'low' ? `<span class="tag t-lo">low</span>` : ''}
+                    ${i.type ? `<span class="tag t-plain">${esc(i.type)}</span>` : ''}
+                </div>
+            </div>`).join('');
+        html += section('ACTION ITEMS', '#22c55e', body, 120);
+    }
+
+    // Implementation plan
+    const ms = (d.implementation_plan?.milestones || []).filter(m => m.name);
+    const tt = (d.implementation_plan?.tech_tasks || []).filter(t => t.description);
+    if (ms.length || tt.length || d.implementation_plan?.overview) {
+        let body = '';
+        if (d.implementation_plan?.overview)
+            body += `<div class="fld"><div class="fld-key">overview</div><div class="fld-val">${esc(d.implementation_plan.overview)}</div></div>`;
+        if (ms.length) {
+            body += `<div class="sub-label">milestones</div>`;
+            body += ms.map(m => `
+                <div class="ms-row">
+                    <div class="ms-name">${esc(m.name)}</div>
+                    ${m.description ? `<div>${esc(m.description)}</div>` : ''}
+                    <div class="ms-meta">
+                        ${m.eta_guess ? `<span>ETA: ${esc(m.eta_guess)}</span>` : ''}
+                        ${m.risks ? `<span>⚠ ${esc(m.risks)}</span>` : ''}
+                    </div>
+                </div>`).join('');
+        }
+        if (tt.length) {
+            body += `<div class="sub-label">tech tasks</div>`;
+            body += tt.map(t => `
+                <div class="task-row">
+                    <div>${esc(t.description)}</div>
+                    <div class="tags">
+                        ${t.complexity ? `<span class="tag t-${t.complexity}">${t.complexity}</span>` : ''}
+                        ${t.area ? `<span class="tag t-plain">${esc(t.area)}</span>` : ''}
+                    </div>
+                </div>`).join('');
+        }
+        html += section('IMPLEMENTATION PLAN', '#a855f7', body, 180);
+    }
+
+    // Code suggestions
+    const snips = (d.code_suggestions?.snippets || []).filter(s => s.code || s.title);
+    if (snips.length) {
+        let body = '';
+        if (d.code_suggestions?.language || d.code_suggestions?.stack_context) {
+            body += `<div class="stack-line">`;
+            if (d.code_suggestions.language)
+                body += `<span class="tag t-plain">${esc(d.code_suggestions.language)}</span>`;
+            if (d.code_suggestions.stack_context)
+                body += `<span class="stack-ctx">${esc(d.code_suggestions.stack_context)}</span>`;
+            body += `</div>`;
+        }
+        snips.forEach((s, i) => {
+            const cid = `c${i}`;
+            body += `
+            <div class="snippet">
+                <div class="snip-head">
+                    <div>
+                        <div class="snip-title">${esc(s.title || 'snippet')}</div>
+                        ${s.purpose ? `<div class="snip-purpose">${esc(s.purpose)}</div>` : ''}
+                    </div>
+                    <button class="copy-btn" data-cp="${cid}" onclick="copyCode('${cid}')">copy</button>
+                </div>
+                <div class="code-block" id="${cid}">${esc(s.code)}</div>
+                ${s.notes ? `<div class="snip-notes">${esc(s.notes)}</div>` : ''}
+            </div>`;
+        });
+        html += section('CODE SUGGESTIONS', '#3b82f6', body, 240);
+    }
+
+    document.getElementById('sections').innerHTML = html;
+}
+
+document.getElementById('tx').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) run();
+});
+</script>
+</body>
+</html>

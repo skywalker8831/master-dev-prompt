@@ -1,0 +1,56 @@
+{
+  "design_doc": {
+    "context_problem": "",
+    "requirements_constraints": "",
+    "proposed_architecture": "",
+    "alternatives": "",
+    "decisions": "",
+    "open_questions_risks": ""
+  },
+  "pm_summary": {
+    "overview": "",
+    "scope": "",
+    "implications_for_timeline": ""
+  },
+  "actions": {
+    "items": [
+      {
+        "description": "",
+        "owner": "",
+        "priority": "low",
+        "type": "feature"
+      }
+    ]
+  },
+  "implementation_plan": {
+    "overview": "",
+    "milestones": [
+      {
+        "name": "",
+        "description": "",
+        "eta_guess": "",
+        "risks": ""
+      }
+    ],
+    "tech_tasks": [
+      {
+        "area": "backend",
+        "description": "",
+        "depends_on": [],
+        "complexity": "S"
+      }
+    ]
+  },
+  "code_suggestions": {
+    "language": "python",
+    "stack_context": "",
+    "snippets": [
+      {
+        "title": "",
+        "purpose": "",
+        "code": "print('ok')",
+        "notes": ""
+      }
+    ]
+  }
+}
