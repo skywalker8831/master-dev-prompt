@@ -177,3 +177,23 @@ def run_master_dev(transcript: str) -> dict:
     )
     return json.loads(response.content[0].text)
 ```
+
+---
+
+## Autopilot Watcher
+
+Run the watcher to automatically process any transcript dropped into `transcripts/`:
+
+```bash
+python3 watcher.py
+```
+
+Then drop any `.txt` file into `transcripts/` — the JSON output appears in `outputs/` automatically.
+
+Custom directories:
+
+```bash
+python3 watcher.py --transcripts ./my-transcripts --outputs ./my-outputs
+```
+
+Stop with `Ctrl+C`. Files already processed (with a matching `.json` in `outputs/`) are skipped automatically.
