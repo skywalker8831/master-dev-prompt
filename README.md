@@ -12,7 +12,7 @@ One prompt. One Claude call. Full engineering package from any transcript.
 | `master_dev_prompt.txt` | The system prompt — defines schema + Claude's role |
 | `run_master_dev.sh` | Shell script to pipe any transcript through Claude Code or Codex (supports `--mock` or `MOCK_OUTPUT=1` to emit `outputs/sample.json` when a model CLI is unavailable) |
 | `validate_output.py` | JSON validator for structure + enum checks |
-| `batch_run_master_dev.sh` | Batch processor for all `transcripts/*.txt` files |
+| `batch_run_master_dev.sh` | Batch processor for all `transcripts/*.txt` files (see [docs/automation.md](docs/automation.md)) |
 | `Makefile` | Local/CI shortcuts (`validate-file`, `validate-outputs`, `ci`) |
 | `.github/workflows/validate-master-dev-prompt.yml` | GitHub Actions validation workflow |
 | `sample_transcript.txt` | Test transcript (Dear Saigon SMS ordering system) |
@@ -181,6 +181,8 @@ def run_master_dev(transcript: str) -> dict:
 ---
 
 ## Autopilot Watcher
+
+> For full details on both the watcher and the batch runner see [docs/automation.md](docs/automation.md).
 
 Run the watcher to automatically process any transcript dropped into `transcripts/`:
 
