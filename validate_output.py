@@ -35,12 +35,6 @@ def require_str(value: Any, path: str) -> None:
         fail(f"{path} must be a string")
 
 
-def require_keys(obj: Dict[str, Any], keys: List[str], path: str) -> None:
-    for key in keys:
-        if key not in obj:
-            fail(f"{path}.{key} is missing")
-
-
 def require_exact_keys(obj: Dict[str, Any], keys: List[str], path: str) -> None:
     expected = set(keys)
     actual = set(obj.keys())
@@ -84,11 +78,6 @@ def main() -> int:
 
     root = require_dict(data, "$")
     root_keys = ["design_doc", "pm_summary", "actions", "implementation_plan", "code_suggestions"]
-    require_keys(
-        root,
-        root_keys,
-        "$",
-    )
     require_exact_keys(root, root_keys, "$")
 
     design_doc = require_dict(root["design_doc"], "$.design_doc")
@@ -100,32 +89,24 @@ def main() -> int:
         "decisions",
         "open_questions_risks",
     ]
-    require_keys(
-        design_doc,
-        design_doc_keys,
-        "$.design_doc",
-    )
     require_exact_keys(design_doc, design_doc_keys, "$.design_doc")
     for key in design_doc_keys:
         require_str(design_doc[key], f"$.design_doc.{key}")
 
     pm_summary = require_dict(root["pm_summary"], "$.pm_summary")
     pm_summary_keys = ["overview", "scope", "implications_for_timeline"]
-    require_keys(pm_summary, pm_summary_keys, "$.pm_summary")
     require_exact_keys(pm_summary, pm_summary_keys, "$.pm_summary")
     for key in pm_summary_keys:
         require_str(pm_summary[key], f"$.pm_summary.{key}")
 
     actions = require_dict(root["actions"], "$.actions")
     actions_keys = ["items"]
-    require_keys(actions, actions_keys, "$.actions")
     require_exact_keys(actions, actions_keys, "$.actions")
     action_items = require_non_empty_list(actions["items"], "$.actions.items")
     for idx, item in enumerate(action_items):
         item_path = f"$.actions.items[{idx}]"
         entry = require_dict(item, item_path)
         action_item_keys = ["description", "owner", "priority", "type"]
-        require_keys(entry, action_item_keys, item_path)
         require_exact_keys(entry, action_item_keys, item_path)
         require_str(entry["description"], f"{item_path}.description")
         require_str(entry["owner"], f"{item_path}.owner")
@@ -134,7 +115,6 @@ def main() -> int:
 
     implementation = require_dict(root["implementation_plan"], "$.implementation_plan")
     implementation_keys = ["overview", "milestones", "tech_tasks"]
-    require_keys(implementation, implementation_keys, "$.implementation_plan")
     require_exact_keys(implementation, implementation_keys, "$.implementation_plan")
     require_str(implementation["overview"], "$.implementation_plan.overview")
 
@@ -143,7 +123,6 @@ def main() -> int:
         milestone_path = f"$.implementation_plan.milestones[{idx}]"
         entry = require_dict(milestone, milestone_path)
         milestone_keys = ["name", "description", "eta_guess", "risks"]
-        require_keys(entry, milestone_keys, milestone_path)
         require_exact_keys(entry, milestone_keys, milestone_path)
         require_str(entry["name"], f"{milestone_path}.name")
         require_str(entry["description"], f"{milestone_path}.description")
@@ -155,7 +134,6 @@ def main() -> int:
         task_path = f"$.implementation_plan.tech_tasks[{idx}]"
         entry = require_dict(task, task_path)
         tech_task_keys = ["area", "description", "depends_on", "complexity"]
-        require_keys(entry, tech_task_keys, task_path)
         require_exact_keys(entry, tech_task_keys, task_path)
         require_enum(entry["area"], AREA, f"{task_path}.area")
         require_str(entry["description"], f"{task_path}.description")
@@ -166,7 +144,6 @@ def main() -> int:
 
     code_suggestions = require_dict(root["code_suggestions"], "$.code_suggestions")
     code_suggestion_keys = ["language", "stack_context", "snippets"]
-    require_keys(code_suggestions, code_suggestion_keys, "$.code_suggestions")
     require_exact_keys(code_suggestions, code_suggestion_keys, "$.code_suggestions")
     require_str(code_suggestions["language"], "$.code_suggestions.language")
     require_str(code_suggestions["stack_context"], "$.code_suggestions.stack_context")
@@ -176,7 +153,6 @@ def main() -> int:
         snippet_path = f"$.code_suggestions.snippets[{idx}]"
         entry = require_dict(snippet, snippet_path)
         snippet_keys = ["title", "purpose", "code", "notes"]
-        require_keys(entry, snippet_keys, snippet_path)
         require_exact_keys(entry, snippet_keys, snippet_path)
         require_str(entry["title"], f"{snippet_path}.title")
         require_str(entry["purpose"], f"{snippet_path}.purpose")

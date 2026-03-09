@@ -24,6 +24,9 @@ load_dotenv()
 
 app = FastAPI(title="Master Dev Prompt API")
 
+_MODEL = "claude-sonnet-4-6"
+_MAX_TOKENS = 8096
+
 
 def verify_api_key(x_api_key: Annotated[str | None, Header()] = None) -> None:
     server_key = os.getenv("SERVER_API_KEY")
@@ -45,6 +48,17 @@ def _get_system_prompt() -> str:
     return _system_prompt
 
 
+def _prepare_claude_call(transcript: str) -> tuple[anthropic.Anthropic, str, str]:
+    """Return (client, system_prompt, user_message) ready for a Claude API call."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not set")
+    client = anthropic.Anthropic(api_key=api_key)
+    system = _get_system_prompt()
+    user_message = f'{transcript}\n"""'
+    return client, system, user_message
+
+
 class ProcessRequest(BaseModel):
     transcript: str
 
@@ -58,17 +72,11 @@ def process_transcript(
     req: ProcessRequest,
     _: Annotated[None, Depends(verify_api_key)],
 ) -> ProcessResponse:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not set")
-
-    client = anthropic.Anthropic(api_key=api_key)
-    system = _get_system_prompt()
-    user_message = f'{req.transcript}\n"""'
+    client, system, user_message = _prepare_claude_call(req.transcript)
 
     message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=8096,
+        model=_MODEL,
+        max_tokens=_MAX_TOKENS,
         system=system,
         messages=[{"role": "user", "content": user_message}],
     )
@@ -90,19 +98,13 @@ def process_transcript_stream(
     req: ProcessRequest,
     _: Annotated[None, Depends(verify_api_key)],
 ) -> StreamingResponse:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not set")
-
-    client = anthropic.Anthropic(api_key=api_key)
-    system = _get_system_prompt()
-    user_message = f'{req.transcript}\n"""'
+    client, system, user_message = _prepare_claude_call(req.transcript)
 
     def generate():
         accumulated = ""
         with client.messages.stream(
-            model="claude-sonnet-4-6",
-            max_tokens=8096,
+            model=_MODEL,
+            max_tokens=_MAX_TOKENS,
             system=system,
             messages=[{"role": "user", "content": user_message}],
         ) as stream:
