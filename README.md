@@ -3,12 +3,15 @@
 
 One prompt. One Claude call. Full engineering package from any transcript.
 
+> **New here?** Start with [OVERVIEW.md](OVERVIEW.md) for a high-level description of what this kit does, how the pieces fit together, and which entry point to use.
+
 ---
 
 ## Files
 
 | File | Purpose |
 |------|---------|
+| `OVERVIEW.md` | High-level project overview — what it is, how the pieces fit together, and when to use each entry point |
 | `master_dev_prompt.txt` | The system prompt — defines schema + Claude's role |
 | `run_master_dev.sh` | Shell script to pipe any transcript through Claude Code or Codex (supports `--mock` or `MOCK_OUTPUT=1` to emit `outputs/sample.json` when a model CLI is unavailable) |
 | `validate_output.py` | JSON validator for structure + enum checks |
