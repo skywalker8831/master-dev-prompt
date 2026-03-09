@@ -1,4 +1,4 @@
-name: Validate Master Dev Prompt Outputs
+name: Validate Master Dev Prompt
 
 on:
   pull_request:
@@ -11,26 +11,45 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  validate-mock:
+    name: Validate (mock)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Run validation CI checks
-        shell: bash
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Make scripts executable
         run: |
-          set -euo pipefail
-          if [[ -f Makefile && -f master_dev_prompt.txt ]]; then
-            make ci
-          elif [[ -d master-dev-prompt && -f master-dev-prompt/Makefile ]]; then
-            make -C master-dev-prompt ci
-          else
-            echo "Could not locate master-dev-prompt project root."
-            exit 1
-          fi
+          chmod +x ./run_master_dev.sh || true
+          chmod +x ./batch_run_master_dev.sh || true
+
+      - name: Run batch mock and validate
+        run: |
+          ./batch_run_master_dev.sh ./transcripts ./outputs --mock
+          python3 validate_output.py outputs/sample_transcript.json
+
+  validate:
+    name: Validate outputs and tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run CI checks
+        run: make ci
