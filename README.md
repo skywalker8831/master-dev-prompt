@@ -5,6 +5,21 @@ One prompt. One Claude call. Full engineering package from any transcript.
 
 ---
 
+## Get the project
+
+**GitHub:** <https://github.com/skywalker8831/master-dev-prompt>
+
+```bash
+git clone https://github.com/skywalker8831/master-dev-prompt.git
+cd master-dev-prompt
+pip install -r requirements.txt   # installs fastapi, uvicorn, anthropic, watchdog, pytest, httpx
+```
+
+Or download a ZIP directly from GitHub:
+<https://github.com/skywalker8831/master-dev-prompt/archive/refs/heads/main.zip>
+
+---
+
 ## Files
 
 | File | Purpose |
