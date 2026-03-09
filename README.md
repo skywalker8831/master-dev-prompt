@@ -102,7 +102,9 @@ Local CI-equivalent check:
 make ci
 ```
 
-GitHub Actions runs the same checks on push and pull request.
+Two GitHub Actions workflows are included:
+- **`ci.yml`** — runs `make ci` on every push to `main`/`master` and on pull requests.
+- **`validate-master-dev-prompt.yml`** — runs a mock batch validation on pull requests: executes `batch_run_master_dev.sh ./transcripts ./outputs --mock` and validates the produced `outputs/sample_transcript.json`.
 
 ---
 
