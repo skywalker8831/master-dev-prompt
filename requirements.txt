@@ -4,3 +4,6 @@ anthropic
 python-dotenv
 watchdog
 pytest
+pyttsx3
+SpeechRecognition
+pyaudio

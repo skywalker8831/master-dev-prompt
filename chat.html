@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat · Master Dev Prompt</title>
+    <style>
+        /* ── CSS Variables (dark theme matching project style) ── */
+        :root {
+            --bg:       #09090b;
+            --surface:  #111113;
+            --surface2: #18181b;
+            --border:   #27272a;
+            --text:     #e4e4e7;
+            --muted:    #52525b;
+            --amber:    #f59e0b;
+            --cyan:     #06b6d4;
+            --green:    #22c55e;
+            --purple:   #a855f7;
+            --blue:     #3b82f6;
+            --red:      #ef4444;
+            --user-bubble:    #1e3a5f;
+            --assist-bubble:  #1c1c1e;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--surface);
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--amber);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #stop-btn {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            font-size: 12px;
+            padding: 5px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        #stop-btn:hover { color: var(--red); border-color: var(--red); }
+
+        /* ── Conversation area ── */
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            margin: auto;
+            text-align: center;
+            color: var(--muted);
+        }
+        .empty-state h2 { font-size: 22px; color: var(--text); margin-bottom: 8px; }
+        .empty-state p  { font-size: 13px; }
+
+        /* ── Message bubbles ── */
+        .msg-row {
+            display: flex;
+            flex-direction: column;
+            max-width: 720px;
+        }
+        .msg-row.user   { align-self: flex-end; align-items: flex-end; }
+        .msg-row.assist { align-self: flex-start; align-items: flex-start; }
+
+        .bubble {
+            padding: 10px 16px;
+            border-radius: 16px;
+            max-width: 100%;
+            word-break: break-word;
+            white-space: pre-wrap;
+            line-height: 1.65;
+        }
+        .msg-row.user   .bubble {
+            background: var(--user-bubble);
+            border-bottom-right-radius: 4px;
+            color: var(--text);
+        }
+        .msg-row.assist .bubble {
+            background: var(--assist-bubble);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+            color: var(--text);
+        }
+
+        /* ── Message action buttons (copy / read aloud) ── */
+        .msg-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 5px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .msg-row:hover .msg-actions { opacity: 1; }
+
+        .msg-btn {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            font-size: 11px;
+            padding: 2px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: color 0.1s, border-color 0.1s;
+            white-space: nowrap;
+        }
+        .msg-btn:hover { color: var(--text); border-color: var(--text); }
+        .msg-btn.tts-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+        .msg-btn.copied { color: var(--green); border-color: var(--green); }
+
+        /* ── Fixed input bar at the bottom ── */
+        #input-bar {
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+            padding: 14px 24px;
+            flex-shrink: 0;
+        }
+
+        .input-inner {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            max-width: 720px;
+            margin: 0 auto;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 12px;
+            transition: border-color 0.15s;
+        }
+        .input-inner:focus-within { border-color: var(--amber); }
+
+        #chat-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-size: 14px;
+            font-family: inherit;
+            line-height: 1.6;
+            resize: none;
+            min-height: 24px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+        #chat-input::placeholder { color: var(--muted); }
+
+        /* Microphone button */
+        #mic-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 18px;
+            padding: 2px 4px;
+            border-radius: 6px;
+            transition: color 0.15s;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        #mic-btn:hover { color: var(--text); }
+        #mic-btn.listening { color: var(--red); animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.5; }
+        }
+
+        /* Send button */
+        #send-btn {
+            background: var(--amber);
+            color: #000;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 6px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+        }
+        #send-btn:hover { opacity: 0.85; }
+        #send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        /* Listening indicator */
+        #listening-label {
+            display: none;
+            font-size: 11px;
+            color: var(--red);
+            text-align: center;
+            margin-top: 6px;
+        }
+        #listening-label.on { display: block; }
+
+        /* Tooltip for "Copied!" */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+    <div class="logo">💬 Chat · Master Dev Prompt</div>
+    <div class="header-actions">
+        <!-- Global stop-speaking button; cancels any ongoing SpeechSynthesis -->
+        <button id="stop-btn" onclick="stopSpeaking()" title="Stop speaking">🔇 Stop Speaking</button>
+    </div>
+</header>
+
+<!-- ── Conversation messages ── -->
+<div id="messages">
+    <div class="empty-state" id="empty-state">
+        <h2>How can I help you?</h2>
+        <p>Type a message below, or click 🎤 to speak.</p>
+    </div>
+</div>
+
+<!-- ── Fixed input bar ── -->
+<div id="input-bar">
+    <div class="input-inner">
+        <!-- Auto-expanding textarea for user input -->
+        <textarea
+            id="chat-input"
+            placeholder="Message…"
+            rows="1"
+            aria-label="Chat input"
+        ></textarea>
+
+        <!-- Microphone (speech-to-text) button -->
+        <button id="mic-btn" onclick="toggleMic()" title="Speech to text" aria-label="Toggle microphone">🎤</button>
+
+        <!-- Send button -->
+        <button id="send-btn" onclick="sendMessage()" aria-label="Send message">Send ↑</button>
+    </div>
+    <!-- Visual cue while STT is active -->
+    <div id="listening-label">🔴 Listening… (click 🎤 to stop)</div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let recognition = null;   // SpeechRecognition instance
+let isListening  = false;  // STT active flag
+
+// ─────────────────────────────────────────────
+//  AUTO-RESIZE TEXTAREA
+// ─────────────────────────────────────────────
+const chatInput = document.getElementById('chat-input');
+chatInput.addEventListener('input', () => {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
+});
+
+// Submit on Enter (Shift+Enter = newline)
+chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// ─────────────────────────────────────────────
+//  SEND MESSAGE
+// ─────────────────────────────────────────────
+function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    // Hide empty state on first message
+    document.getElementById('empty-state').style.display = 'none';
+
+    // Render user message
+    appendMessage('user', text);
+
+    // Clear input
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    document.getElementById('send-btn').disabled = true;
+
+    // TODO: Replace this mock with a real API call.
+    // See SPEECH_README.md § "Connecting to a Backend" for integration examples.
+
+    // Mock assistant reply after a short delay (remove when wired to a real API)
+    setTimeout(() => {
+        const reply = `You said: "${text}"\n\n(Connect a backend or ChatGPT API to get a real response — see the TODO comment in sendMessage().)`;
+        appendMessage('assist', reply);
+        document.getElementById('send-btn').disabled = false;
+    }, 600);
+}
+
+// ─────────────────────────────────────────────
+//  APPEND MESSAGE TO CONVERSATION
+// ─────────────────────────────────────────────
+function appendMessage(role, text) {
+    const container = document.getElementById('messages');
+
+    // Build message row
+    const row = document.createElement('div');
+    row.className = `msg-row ${role}`;
+
+    // Bubble
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+
+    // Action buttons
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+
+    // 📋 Copy button (both user and assistant messages)
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'msg-btn copy-btn';
+    copyBtn.textContent = '📋 Copy';
+    copyBtn.title = 'Copy message to clipboard';
+    copyBtn.addEventListener('click', () => copyToClipboard(text, copyBtn));
+    actions.appendChild(copyBtn);
+
+    // 🔊 Read Aloud button (assistant messages only)
+    if (role === 'assist') {
+        const ttsBtn = document.createElement('button');
+        ttsBtn.className = 'msg-btn tts-btn';
+        ttsBtn.textContent = '🔊 Read Aloud';
+        ttsBtn.title = 'Read this message aloud';
+        ttsBtn.addEventListener('click', () => speakText(text));
+        actions.appendChild(ttsBtn);
+    }
+
+    row.appendChild(bubble);
+    row.appendChild(actions);
+    container.appendChild(row);
+
+    // Auto-scroll to latest message
+    container.scrollTop = container.scrollHeight;
+}
+
+// ─────────────────────────────────────────────
+//  TEXT-TO-SPEECH (Web SpeechSynthesis API)
+// ─────────────────────────────────────────────
+
+/**
+ * Reads the given text aloud using the browser's built-in SpeechSynthesis API.
+ * No external libraries required.
+ */
+function speakText(text) {
+    // Cancel any currently playing speech before starting new
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate   = 1.0;   // Speed: 0.1 – 10 (1 = normal)
+    utterance.pitch  = 1.0;   // Pitch: 0 – 2  (1 = normal)
+    utterance.volume = 1.0;   // Volume: 0 – 1
+
+    // Optionally select a specific voice:
+    // const voices = window.speechSynthesis.getVoices();
+    // utterance.voice = voices.find(v => v.lang === 'en-US') || voices[0];
+
+    window.speechSynthesis.speak(utterance);
+}
+
+/**
+ * Stops any ongoing speech playback.
+ * Triggered by the global "Stop Speaking" button in the header.
+ */
+function stopSpeaking() {
+    window.speechSynthesis.cancel();
+}
+
+// ─────────────────────────────────────────────
+//  SPEECH-TO-TEXT (Web SpeechRecognition API)
+// ─────────────────────────────────────────────
+
+/**
+ * Toggles microphone listening on/off.
+ * Uses the browser's webkitSpeechRecognition / SpeechRecognition API.
+ * Transcribed text is appended to the chat input field.
+ */
+function toggleMic() {
+    if (isListening) {
+        stopListening();
+    } else {
+        startListening();
+    }
+}
+
+function startListening() {
+    // Check for browser support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert('Speech recognition is not supported in this browser.\nTry Chrome or Edge.');
+        return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang            = 'en-US';
+    recognition.interimResults  = true;   // Show partial results as you speak
+    recognition.continuous      = true;   // Keep listening until stopped
+    recognition.maxAlternatives = 1;
+
+    let finalTranscript = '';
+
+    recognition.onstart = () => {
+        isListening = true;
+        document.getElementById('mic-btn').classList.add('listening');
+        document.getElementById('listening-label').classList.add('on');
+    };
+
+    recognition.onresult = (event) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            if (result.isFinal) {
+                finalTranscript += result[0].transcript + ' ';
+            } else {
+                interim += result[0].transcript;
+            }
+        }
+        // Fill the input field with accumulated final + current interim text
+        chatInput.value = finalTranscript + interim;
+        // Trigger resize
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
+    };
+
+    recognition.onerror = (event) => {
+        console.error('SpeechRecognition error:', event.error);
+        stopListening();
+        if (event.error === 'not-allowed') {
+            alert('Microphone access was denied. Please allow microphone permissions and try again.');
+        }
+    };
+
+    recognition.onend = () => {
+        // Auto-restart only if still in listening mode (handles interim end events)
+        if (isListening) {
+            recognition.start();
+        }
+    };
+
+    recognition.start();
+}
+
+function stopListening() {
+    isListening = false;
+    document.getElementById('mic-btn').classList.remove('listening');
+    document.getElementById('listening-label').classList.remove('on');
+    if (recognition) {
+        recognition.stop();
+        recognition = null;
+    }
+}
+
+// ─────────────────────────────────────────────
+//  COPY TO CLIPBOARD
+// ─────────────────────────────────────────────
+
+/**
+ * Copies the provided text to the clipboard and shows a brief "Copied!" tooltip.
+ * Uses the modern Clipboard API (requires HTTPS or localhost).
+ */
+function copyToClipboard(text, btn) {
+    if (!navigator.clipboard) {
+        // Fallback for older browsers / non-secure contexts
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity  = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showCopiedFeedback(btn);
+        return;
+    }
+
+    navigator.clipboard.writeText(text)
+        .then(() => showCopiedFeedback(btn))
+        .catch(err => console.error('Clipboard write failed:', err));
+}
+
+function showCopiedFeedback(btn) {
+    const original = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove('copied');
+    }, 1500);
+}
+</script>
+</body>
+</html>
