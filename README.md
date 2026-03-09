@@ -213,3 +213,59 @@ python3 watcher.py --transcripts ./my-transcripts --outputs ./my-outputs
 ```
 
 Stop with `Ctrl+C`. Files already processed (with a matching `.json` in `outputs/`) are skipped automatically.
+
+---
+
+## Final Products & Quality Assurance
+
+### Where are the final products?
+
+Every run writes its output to the **`outputs/`** folder in the repository root:
+
+| File | Meaning |
+|------|---------|
+| `outputs/<name>.json` | ✅ Valid structured JSON — the finished product |
+| `outputs/<name>.invalid.json` | ❌ Run completed but the JSON failed schema validation |
+| `outputs/<name>.log` | 📋 Full run log for debugging |
+
+`<name>` matches the transcript filename without the `.txt` extension.  
+Example: `transcripts/my_feature.txt` → `outputs/my_feature.json`
+
+### Do we double-check until you're done?
+
+Yes. Every output goes through a three-layer quality pipeline before it is considered finished:
+
+**Layer 1 — Schema validation (after every run)**
+
+`validate_output.py` checks the JSON immediately after generation:
+- All required top-level keys must be present (`design_doc`, `pm_summary`, `actions`, `implementation_plan`, `code_suggestions`)
+- Every list field (`actions.items`, milestones, tech_tasks, snippets) must contain at least one item
+- Enum fields (`priority`, `type`, `area`, `complexity`) must use exact allowed values
+- If any check fails, the file is saved as `*.invalid.json` and the run exits non-zero
+
+```bash
+python3 validate_output.py outputs/my_feature.json   # manual check
+make validate-file FILE=outputs/my_feature.json      # via Make
+```
+
+**Layer 2 — Batch re-validation (all outputs at once)**
+
+Run this to re-validate every file in `outputs/` in one pass:
+
+```bash
+make validate-outputs
+```
+
+Failed files (`*.invalid.json`) are ignored by this target so they don't block the rest.
+
+**Layer 3 — Continuous Integration (automatic, every push/PR)**
+
+GitHub Actions runs the full CI suite automatically on every push and pull request:
+
+```bash
+make ci   # same checks, locally
+```
+
+`make ci` runs `test-validator` (fixture check) then `validate-outputs` (all outputs). The workflow fails the build if any output is invalid — nothing merges until everything passes.
+
+> **Summary:** output → immediate schema check → batch re-check → CI gate on every push. The pipeline will not let an invalid file slip through unnoticed.
