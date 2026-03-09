@@ -17,8 +17,13 @@ import sys
 import time
 from pathlib import Path
 
-from watchdog.events import FileCreatedEvent, FileSystemEventHandler
-from watchdog.observers import Observer
+try:
+    from watchdog.events import FileCreatedEvent, FileSystemEventHandler
+    from watchdog.observers import Observer
+except ImportError:  # pragma: no cover
+    FileSystemEventHandler = object  # type: ignore[assignment,misc]
+    FileCreatedEvent = None  # type: ignore[assignment,misc]
+    Observer = None  # type: ignore[assignment,misc]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -80,6 +85,9 @@ class TranscriptHandler(FileSystemEventHandler):
 
 
 def main() -> None:
+    if Observer is None:
+        log.error("watchdog is required to run the watcher. Install it with: pip install watchdog")
+        sys.exit(1)
     parser = argparse.ArgumentParser(description="Autopilot watcher for transcript processing")
     parser.add_argument("--transcripts", default="transcripts", help="Directory to watch")
     parser.add_argument("--outputs", default="outputs", help="Directory for output JSON files")
