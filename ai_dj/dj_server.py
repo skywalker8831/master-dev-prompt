@@ -28,12 +28,11 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from dj_brain import DJBrain
-from track_library import TrackLibrary, VALID_GENRES, _validate_track
+from track_library import TrackLibrary
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -117,7 +116,6 @@ def add_track(track: TrackIn) -> dict[str, str]:
     lib = _get_library()
     raw = track.model_dump()
     try:
-        _validate_track(raw)
         lib.add(raw)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

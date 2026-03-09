@@ -34,7 +34,7 @@ VALID_GENRES = {
 }
 
 
-def _validate_track(track: dict[str, Any]) -> None:
+def validate_track(track: dict[str, Any]) -> None:
     """Raise ValueError if *track* is missing required fields or has bad values."""
     missing = REQUIRED_KEYS - track.keys()
     if missing:
@@ -77,7 +77,7 @@ class TrackLibrary:
 
     def add(self, track: dict[str, Any]) -> None:
         """Add *track* to the library after validation."""
-        _validate_track(track)
+        validate_track(track)
         if any(t["title"] == track["title"] and t["artist"] == track["artist"]
                for t in self._tracks):
             raise ValueError(

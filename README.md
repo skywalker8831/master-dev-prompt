@@ -13,11 +13,12 @@ One prompt. One Claude call. Full engineering package from any transcript.
 | `run_master_dev.sh` | Shell script to pipe any transcript through Claude Code or Codex (supports `--mock` or `MOCK_OUTPUT=1` to emit `outputs/sample.json` when a model CLI is unavailable) |
 | `validate_output.py` | JSON validator for structure + enum checks |
 | `batch_run_master_dev.sh` | Batch processor for all `transcripts/*.txt` files |
-| `Makefile` | Local/CI shortcuts (`validate-file`, `validate-outputs`, `ci`) |
+| `Makefile` | Local/CI shortcuts (`validate-file`, `validate-outputs`, `test`, `ci`) |
 | `.github/workflows/validate-master-dev-prompt.yml` | GitHub Actions validation workflow |
 | `sample_transcript.txt` | Test transcript (Dear Saigon SMS ordering system) |
 | `app.py` | FastAPI HTTP server — `POST /process` calls Claude directly via SDK, `GET /` serves the web UI |
 | `static/index.html` | Terminal-style web UI — paste a transcript, get rendered artifacts |
+| `ai_dj/` | **AI-DJ sub-project** — four-script system that builds Claude-powered DJ playlists from a local track library (see [`ai_dj/README.md`](ai_dj/README.md)) |
 
 ---
 
