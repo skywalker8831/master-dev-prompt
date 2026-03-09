@@ -3,6 +3,8 @@
 
 One prompt. One Claude call. Full engineering package from any transcript.
 
+**Update:** Copilot coding agent now uses fewer premium requests — each session consumes just one premium request.
+
 ---
 
 ## Files
