@@ -17,7 +17,7 @@ from typing import Annotated
 import anthropic
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 load_dotenv()
@@ -33,6 +33,7 @@ def verify_api_key(x_api_key: Annotated[str | None, Header()] = None) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 _PROMPT_PATH = Path(__file__).parent / "master_dev_prompt.txt"
+_AUTOPILOT_PROMPT_PATH = Path(__file__).parent / "autopilot_master_prompt.txt"
 _system_prompt: str | None = None
 
 
@@ -123,6 +124,17 @@ def process_transcript_stream(
 def ui() -> HTMLResponse:
     html = Path(__file__).parent / "static" / "index.html"
     return HTMLResponse(html.read_text() if html.exists() else "<h1>UI not found</h1>", status_code=200 if html.exists() else 404)
+
+
+@app.get("/autopilot/prompt")
+def autopilot_prompt() -> FileResponse:
+    if not _AUTOPILOT_PROMPT_PATH.exists():
+        raise HTTPException(status_code=404, detail="Autopilot prompt not found")
+    return FileResponse(
+        _AUTOPILOT_PROMPT_PATH,
+        media_type="text/plain",
+        filename=_AUTOPILOT_PROMPT_PATH.name,
+    )
 
 
 @app.get("/health")

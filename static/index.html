@@ -38,6 +38,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 12px;
         }
 
         .logo {
@@ -58,6 +59,17 @@
             color: var(--muted);
             border: 1px solid var(--border);
             padding: 3px 10px;
+        }
+        a.badge {
+            text-decoration: none;
+            display: inline-block;
+        }
+        a.badge:hover { color: var(--text); border-color: var(--text); }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         main { max-width: 1100px; margin: 0 auto; padding: 32px; }
@@ -315,7 +327,10 @@
     <div>
         <div class="logo">SIGNAL <em>· MASTER DEV PROMPT</em></div>
     </div>
-    <div class="badge">buildagentic · McDis Framework</div>
+    <div class="header-actions">
+        <div class="badge">buildagentic · McDis Framework</div>
+        <a class="badge" href="/autopilot/prompt" download>Download Autopilot Prompt</a>
+    </div>
 </header>
 
 <main>
