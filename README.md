@@ -17,7 +17,7 @@ One prompt. One Claude call. Full engineering package from any transcript.
 | `batch_run_master_dev.sh` | Batch processor for all `transcripts/*.txt` files |
 | `Makefile` | Local/CI shortcuts (`validate-file`, `validate-outputs`, `ci`) |
 | `.github/workflows/validate-master-dev-prompt.yml` | Main GitHub Actions validation workflow for push/PR checks |
-| `.github/workflows/validate-master-dev-prompt-mock.yml` | Mock validation workflow for pull requests |
+| `.github/workflows/validate-mock.yml` | Mock validation workflow for pull requests |
 | `sample_transcript.txt` | Test transcript (Dear Saigon SMS ordering system) |
 | `app.py` | FastAPI HTTP server — `POST /process` calls Claude directly via SDK, `GET /` serves the web UI |
 | `static/index.html` | Terminal-style web UI — paste a transcript, get rendered artifacts |
