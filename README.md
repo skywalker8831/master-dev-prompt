@@ -108,6 +108,25 @@ GitHub Actions runs the same checks on push and pull request.
 
 ---
 
+## Validation
+
+Run `make ci` for the repository's standard validation path:
+```bash
+make ci
+```
+
+If you change only the validator behavior, at minimum run:
+```bash
+python3 validate_output.py ./ci/fixtures/valid_output.json
+```
+
+If you change batch or prompt behavior, validate produced JSON files with:
+```bash
+make validate-outputs
+```
+
+---
+
 ## Manual (no script)
 
 ```bash
