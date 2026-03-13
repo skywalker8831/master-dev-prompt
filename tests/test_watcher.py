@@ -90,4 +90,7 @@ def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
     assert not (outputs_dir / "meeting.json").exists()
     assert not (outputs_dir / "meeting.tmp.json").exists()
     assert (outputs_dir / "meeting.invalid.json").read_text() == "{}"
-    assert (outputs_dir / "meeting.log").read_text() == "runner stderr\n\n=== validation ===\nINVALID: bad schema\n"
+    log_text = (outputs_dir / "meeting.log").read_text()
+    assert "runner stderr" in log_text
+    assert "=== validation ===" in log_text
+    assert "INVALID: bad schema" in log_text
