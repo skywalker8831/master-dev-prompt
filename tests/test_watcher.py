@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -61,7 +62,7 @@ def test_process_transcript_calls_script(tmp_path):
         runner_args = mock_run.call_args_list[0][0][0]
         validator_args = mock_run.call_args_list[1][0][0]
         assert runner_args == [str(script), str(txt)]
-        assert Path(validator_args[0]).name.startswith("python")
+        assert validator_args[0] == sys.executable
         assert validator_args[1].endswith("validate_output.py")
         assert validator_args[2].endswith("meeting.tmp.json")
         assert (outputs_dir / "meeting.json").read_text() == "{}"
@@ -89,4 +90,4 @@ def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
     assert not (outputs_dir / "meeting.json").exists()
     assert not (outputs_dir / "meeting.tmp.json").exists()
     assert (outputs_dir / "meeting.invalid.json").read_text() == "{}"
-    assert (outputs_dir / "meeting.log").read_text() == "runner stderr\nINVALID: bad schema\n"
+    assert (outputs_dir / "meeting.log").read_text() == "runner stderr\n\n=== validation ===\nINVALID: bad schema\n"

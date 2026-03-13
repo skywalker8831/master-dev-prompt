@@ -73,6 +73,7 @@ def process_transcript(txt_path: Path, outputs_dir: Path, script: Path = _SCRIPT
         text=True,
     )
     with log_file.open("a") as handle:
+        handle.write("\n=== validation ===\n")
         handle.write(validation.stdout)
         handle.write(validation.stderr)
 
