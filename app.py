@@ -55,7 +55,7 @@ def _prepare_claude_call(transcript: str) -> tuple[anthropic.Anthropic, str, str
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not set")
     client = anthropic.Anthropic(api_key=api_key)
     system = _get_system_prompt()
-    user_message = f'{transcript}\n"""'
+    user_message = f'{transcript}\n\n"""'
     return client, system, user_message
 
 
