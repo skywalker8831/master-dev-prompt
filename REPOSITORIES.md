@@ -29,7 +29,7 @@ There are currently **no known archive repos** in this repository family. If a r
 2. Keep exactly one primary working repo at a time. Today that role belongs to `skywalker8831/master`.
 3. Use the `skywalker8831` namespace for canonical, shared, or team-owned repositories.
 4. Use personal namespaces such as `skywalker8888` only for private experiments, evaluation clones, or short-lived sandboxes.
-5. Name variants by purpose, not by vague labels. Prefer names like `master-ops-variant` or `master-<use-case>` instead of `OP` or `Op2`.
+5. Name variants by purpose, not by vague labels. Prefer names like `master-ops-variant` or `master-<use-case>` instead of opaque names like `op2`.
 6. When a repo changes role, update both this file and the repo’s GitHub description in the same change.
 
 ## Maintenance rules
