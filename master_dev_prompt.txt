@@ -5,6 +5,7 @@ Return ONLY valid JSON. No markdown. No code fences. No explanation outside the 
 Use empty strings "" where information is not present in the transcript.
 Write REAL runnable code in snippets — no pseudocode, no placeholder comments.
 Do not add keys that are not in the required schema.
+Before responding, do a final self-check that your output is valid JSON matching the exact schema and enum values.
 All required array fields must contain at least one object:
 - actions.items
 - implementation_plan.milestones
