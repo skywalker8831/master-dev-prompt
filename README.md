@@ -3,7 +3,20 @@
 
 One prompt. One Claude call. Full engineering package from any transcript.
 
+This repository is the **canonical template/source repo** for the Master Developer Prompt Kit family. For the current repository inventory, role classifications, recommended repo descriptions, and naming guidance, see [`REPOSITORIES.md`](REPOSITORIES.md).
+
 **Update:** Copilot coding agent now uses fewer premium requests — each session consumes just one premium request.
+
+---
+
+## Repository Family
+
+- `skywalker8831/master-dev-prompt` — canonical template/source repo
+- `skywalker8831/master` — primary active working derivative
+- `skywalker8831/op2` — variant repo
+- `skywalker8888/*` related repos listed in [`REPOSITORIES.md`](REPOSITORIES.md) are tracked as private experiments unless reclassified
+
+Use [`REPOSITORIES.md`](REPOSITORIES.md) as the source of truth for repo roles, ownership guidance, and recommended GitHub descriptions.
 
 ---
 
