@@ -1,7 +1,6 @@
-import json
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -53,9 +52,41 @@ def test_process_transcript_calls_script(tmp_path):
     script.chmod(0o755)
 
     with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=0, stdout="{}", stderr="")
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="{}", stderr=""),
+            MagicMock(returncode=0, stdout="VALID: tmp", stderr=""),
+        ]
         process_transcript(txt, outputs_dir, script)
-        mock_run.assert_called_once()
-        args = mock_run.call_args[0][0]
-        assert str(script) in args
-        assert str(txt) in args
+        assert mock_run.call_count == 2
+        runner_args = mock_run.call_args_list[0][0][0]
+        validator_args = mock_run.call_args_list[1][0][0]
+        assert runner_args == [str(script), str(txt)]
+        assert Path(validator_args[0]).name.startswith("python")
+        assert validator_args[1].endswith("validate_output.py")
+        assert validator_args[2].endswith("meeting.tmp.json")
+        assert (outputs_dir / "meeting.json").read_text() == "{}"
+
+
+def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
+    from watcher import process_transcript
+
+    txt = tmp_path / "meeting.txt"
+    txt.write_text("transcript content")
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    script = tmp_path / "run_master_dev.sh"
+    script.write_text("#!/bin/bash\necho '{}'")
+    script.chmod(0o755)
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="{}", stderr="runner stderr\n"),
+            MagicMock(returncode=1, stdout="", stderr="INVALID: bad schema\n"),
+        ]
+
+        process_transcript(txt, outputs_dir, script)
+
+    assert not (outputs_dir / "meeting.json").exists()
+    assert not (outputs_dir / "meeting.tmp.json").exists()
+    assert (outputs_dir / "meeting.invalid.json").read_text() == "{}"
+    assert (outputs_dir / "meeting.log").read_text() == "runner stderr\nINVALID: bad schema\n"

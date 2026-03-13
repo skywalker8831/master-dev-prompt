@@ -190,7 +190,7 @@ Run the watcher to automatically process any transcript dropped into `transcript
 python3 watcher.py
 ```
 
-Then drop any `.txt` file into `transcripts/` — the JSON output appears in `outputs/` automatically.
+Then drop any `.txt` file into `transcripts/` — validated JSON output appears in `outputs/` automatically.
 
 Custom directories:
 
@@ -199,3 +199,4 @@ python3 watcher.py --transcripts ./my-transcripts --outputs ./my-outputs
 ```
 
 Stop with `Ctrl+C`. Files already processed (with a matching `.json` in `outputs/`) are skipped automatically.
+Schema failures are written to `outputs/<name>.invalid.json`, and validator details are appended to `outputs/<name>.log`.
