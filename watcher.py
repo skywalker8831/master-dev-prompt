@@ -28,6 +28,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 _SCRIPT = Path(__file__).parent / "run_master_dev.sh"
+_VALIDATOR = Path(__file__).parent / "validate_output.py"
 
 
 def should_process(txt_path: Path, outputs_dir: Path) -> bool:
@@ -46,6 +47,8 @@ def get_output_path(txt_path: Path, outputs_dir: Path) -> Path:
 def process_transcript(txt_path: Path, outputs_dir: Path, script: Path = _SCRIPT) -> None:
     """Run run_master_dev.sh on txt_path, saving output to outputs_dir."""
     output_json = get_output_path(txt_path, outputs_dir)
+    output_tmp = outputs_dir / (txt_path.stem + ".tmp.json")
+    invalid_json = outputs_dir / (txt_path.stem + ".invalid.json")
     log_file = outputs_dir / (txt_path.stem + ".log")
 
     log.info("Processing: %s → %s", txt_path.name, output_json.name)
@@ -62,7 +65,24 @@ def process_transcript(txt_path: Path, outputs_dir: Path, script: Path = _SCRIPT
         log.error("Failed: %s (exit %d). See %s", txt_path.name, result.returncode, log_file)
         return
 
-    output_json.write_text(result.stdout)
+    output_tmp.write_text(result.stdout)
+
+    validation = subprocess.run(
+        [sys.executable, str(_VALIDATOR), str(output_tmp)],
+        capture_output=True,
+        text=True,
+    )
+    with log_file.open("a") as handle:
+        handle.write("\n=== validation ===\n")
+        handle.write(validation.stdout)
+        handle.write(validation.stderr)
+
+    if validation.returncode != 0:
+        output_tmp.replace(invalid_json)
+        log.error("Invalid output: %s → %s. See %s", txt_path.name, invalid_json.name, log_file)
+        return
+
+    output_tmp.replace(output_json)
     log.info("Done: %s", output_json)
 
 
