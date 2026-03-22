@@ -1,0 +1,12 @@
+# Master Dev Prompt Kit - Code Owners
+# These owners will be requested for review on all PRs
+
+* @skywalker8888
+
+# Workflow files require extra review
+.github/ @skywalker8888
+
+# Core prompt and validation
+master_dev_prompt.txt @skywalker8888
+validate_output.py @skywalker8888
+app.py @skywalker8888
