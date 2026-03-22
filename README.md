@@ -1,3 +1,5 @@
+<!-- CI Status -->
+
 # Master Developer Prompt Kit
 ### buildagentic · McDis Framework
 
