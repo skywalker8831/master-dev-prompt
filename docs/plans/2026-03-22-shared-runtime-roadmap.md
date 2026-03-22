@@ -63,7 +63,7 @@ Improve overall architecture reliability by moving prompt loading and strict sch
 
 ### Implemented in this refactor
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/master_dev_runtime.py`
+#### `master_dev_runtime.py`
 - New shared runtime module
 - Centralizes:
   - prompt path constants
@@ -73,47 +73,47 @@ Improve overall architecture reliability by moving prompt loading and strict sch
   - strict schema validation
   - file-based validation entrypoint
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/validate_output.py`
+#### `validate_output.py`
 - Reduced to a thin CLI wrapper around the shared runtime
 - Preserves current command-line behavior and output format
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/app.py`
+#### `app.py`
 - Uses the shared runtime for prompt loading and schema validation
 - `POST /process` now rejects schema-invalid model output
 - `POST /process/stream` now validates the accumulated final payload before emitting `done`
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/watcher.py`
+#### `watcher.py`
 - Reuses shared validation logic instead of spawning a separate validator subprocess
 - Keeps existing output/log behavior intact while reducing validation duplication
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/tests/test_master_dev_runtime.py`
+#### `tests/test_master_dev_runtime.py`
 - Adds focused tests for reusable validation behavior
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/tests/test_app.py`
+#### `tests/test_app.py`
 - Adds endpoint tests for strict schema validation and API auth behavior
 - Adds streaming tests for success/error end states
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/Makefile`
+#### `Makefile`
 - Adds Python test execution to `make ci`
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/.github/workflows/validate-master-dev-prompt.yml`
+#### `.github/workflows/validate-master-dev-prompt.yml`
 - Replaces the malformed combined workflow with one valid workflow
 - Installs Python dependencies and runs `make ci`
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/README.md`
+#### `README.md`
 - Documents the shared runtime module
 - Documents the Python test command
 - Clarifies that API responses are schema-validated
 
 ### Likely future files for follow-up milestones
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/run_master_dev.sh`
+#### `run_master_dev.sh`
 - Candidate for future thin-wrapper behavior around shared Python runtime utilities
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/batch_run_master_dev.sh`
+#### `batch_run_master_dev.sh`
 - Candidate for future consolidation if batch orchestration moves into Python
 
-#### `/home/runner/work/master-dev-prompt/master-dev-prompt/static/index.html`
+#### `static/index.html`
 - Candidate for future UX improvements around stream validation errors
 
 ## Validation Plan
