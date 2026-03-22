@@ -5,13 +5,14 @@ VALIDATOR := ./validate_output.py
 OUTPUT_DIR ?= ./outputs
 FILE ?=
 
-.PHONY: help validate-file validate-outputs test-validator ci
+.PHONY: help validate-file validate-outputs test-validator test-python ci
 
 help:
 	@echo "Targets:"
 	@echo "  make validate-file FILE=path/to/output.json"
 	@echo "  make validate-outputs [OUTPUT_DIR=./outputs]"
 	@echo "  make test-validator"
+	@echo "  make test-python"
 	@echo "  make ci"
 
 validate-file:
@@ -35,5 +36,8 @@ validate-outputs:
 test-validator:
 	@$(PYTHON) $(VALIDATOR) ./ci/fixtures/valid_output.json
 
-ci: test-validator validate-outputs
+test-python:
+	@$(PYTHON) -m pytest -q
+
+ci: test-validator validate-outputs test-python
 	@echo "CI checks passed."
