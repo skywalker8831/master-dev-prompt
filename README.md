@@ -1,5 +1,5 @@
 # Master Developer Prompt Kit
-### Whisper Flow · buildagentic · McDis Framework
+### buildagentic · McDis Framework
 
 One prompt. One Claude call. Full engineering package from any transcript.
 
