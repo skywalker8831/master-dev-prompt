@@ -12,7 +12,7 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete old workflow runs via GitHub API
+      - name: Delete old workflow runs (30+ days)
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -32,3 +32,29 @@ jobs:
             PAGE=$((PAGE+1))
           done
           echo "Deleted ${DELETED} old workflow runs."
+
+      - name: Delete all runs from deleted/disabled workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "Fetching disabled/deleted workflow IDs..."
+          # Get all workflows including disabled ones
+          DISABLED_IDS=$(gh api "/repos/${REPO}/actions/workflows?per_page=100" \
+            --jq '.workflows[] | select(.state != "active") | .id')
+          TOTAL=0
+          for WF_ID in $DISABLED_IDS; do
+            echo "Cleaning runs for disabled workflow ID: ${WF_ID}"
+            PAGE=1
+            while true; do
+              RUNS=$(gh api "/repos/${REPO}/actions/workflows/${WF_ID}/runs?per_page=100&page=${PAGE}" \
+                --jq '.workflow_runs[].id' 2>/dev/null || echo '')
+              [ -z "$RUNS" ] && break
+              for RUN_ID in $RUNS; do
+                gh api -X DELETE "/repos/${REPO}/actions/runs/${RUN_ID}" && TOTAL=$((TOTAL+1)) || true
+              done
+              PAGE=$((PAGE+1))
+            done
+          done
+          echo "Deleted ${TOTAL} runs from disabled/deleted workflows."
