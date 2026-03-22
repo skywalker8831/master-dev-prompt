@@ -1,0 +1,87 @@
+name: Copilot Auto-Fix Agent
+
+# Triggers: new issues, failed CI, and manual dispatch
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_run:
+    workflows: ["Validate master-dev-prompt"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Describe what the agent should fix"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  auto-fix-on-issue:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assign Copilot to issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Add copilot label and comment to trigger agent
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['copilot-autofix']
+            });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '@copilot Please investigate this issue, identify the root cause in the codebase, implement a fix, run tests to verify, and open a pull request with the changes.'
+            });
+
+  auto-fix-on-ci-failure:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create issue for CI failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `CI Failure: ${run.name} on ${run.head_branch}`,
+              body: `## Automated CI Failure Report\n\n` +
+                `**Workflow:** ${run.name}\n` +
+                `**Branch:** ${run.head_branch}\n` +
+                `**Commit:** ${run.head_sha}\n` +
+                `**Run:** ${run.html_url}\n\n` +
+                `@copilot Please investigate this CI failure, identify the root cause, fix it, and open a PR.`,
+              labels: ['copilot-autofix', 'ci-failure']
+            });
+            console.log(`Created issue #${issue.data.number}`);
+
+  manual-fix:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create issue for manual task
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const task = context.payload.inputs.task;
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Agent Task: ${task.substring(0, 80)}`,
+              body: `## Manual Agent Task\n\n${task}\n\n@copilot Please complete this task, implement changes, run tests, and open a PR.`,
+              labels: ['copilot-autofix']
+            });
+            console.log(`Created issue #${issue.data.number}`);
