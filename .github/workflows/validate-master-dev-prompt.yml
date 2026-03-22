@@ -1,29 +1,35 @@
-name: Validate master-dev-prompt (mock)
+name: Validate Master Dev Prompt
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
 
 jobs:
-  validate-mock:
-    name: Validate (mock)
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: "3.11"
 
-      - name: Make scripts executable
-        run: |
-          chmod +x ./run_master_dev.sh || true
-          chmod +x ./batch_run_master_dev.sh || true
+      - name: Install Python dependencies
+        run: python3 -m pip install -r requirements.txt
 
-      - name: Run batch mock and validate
+      - name: Ensure scripts are executable
         run: |
-          ./batch_run_master_dev.sh ./transcripts ./outputs --mock
-          # Validate any produced json files; fail the job if invalid
-          python3 validate_output.py outputs/sample_transcript.json
+          chmod +x ./run_master_dev.sh
+          chmod +x ./batch_run_master_dev.sh
+          chmod +x ./validate_output.py
+
+      - name: Run validation and tests
+        run: make ci

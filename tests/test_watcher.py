@@ -1,9 +1,8 @@
-import subprocess
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
+FIXTURE_PATH = Path(__file__).resolve().parents[1] / "ci" / "fixtures" / "valid_output.json"
+VALID_OUTPUT = FIXTURE_PATH.read_text(encoding="utf-8")
 
 
 def test_should_process_returns_true_for_new_txt(tmp_path):
@@ -53,19 +52,12 @@ def test_process_transcript_calls_script(tmp_path):
     script.chmod(0o755)
 
     with patch("subprocess.run") as mock_run:
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="{}", stderr=""),
-            MagicMock(returncode=0, stdout="VALID: tmp", stderr=""),
-        ]
+        mock_run.return_value = MagicMock(returncode=0, stdout=VALID_OUTPUT, stderr="")
         process_transcript(txt, outputs_dir, script)
-        assert mock_run.call_count == 2
+        assert mock_run.call_count == 1
         runner_args = mock_run.call_args_list[0][0][0]
-        validator_args = mock_run.call_args_list[1][0][0]
         assert runner_args == [str(script), str(txt)]
-        assert validator_args[0] == sys.executable
-        assert validator_args[1].endswith("validate_output.py")
-        assert validator_args[2].endswith("meeting.tmp.json")
-        assert (outputs_dir / "meeting.json").read_text() == "{}"
+        assert (outputs_dir / "meeting.json").read_text() == VALID_OUTPUT
 
 
 def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
@@ -80,10 +72,7 @@ def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
     script.chmod(0o755)
 
     with patch("subprocess.run") as mock_run:
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="{}", stderr="runner stderr\n"),
-            MagicMock(returncode=1, stdout="", stderr="INVALID: bad schema\n"),
-        ]
+        mock_run.return_value = MagicMock(returncode=0, stdout="{}", stderr="runner stderr\n")
 
         process_transcript(txt, outputs_dir, script)
 
@@ -93,4 +82,4 @@ def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
     log_text = (outputs_dir / "meeting.log").read_text()
     assert "runner stderr" in log_text
     assert "=== validation ===" in log_text
-    assert "INVALID: bad schema" in log_text
+    assert "INVALID: $ keys mismatch" in log_text

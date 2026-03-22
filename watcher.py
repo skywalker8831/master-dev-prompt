@@ -17,6 +17,7 @@ import sys
 import time
 from pathlib import Path
 
+from master_dev_runtime import ValidationError, validate_output_file
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -28,9 +29,6 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 _SCRIPT = Path(__file__).parent / "run_master_dev.sh"
-_VALIDATOR = Path(__file__).parent / "validate_output.py"
-
-
 def should_process(txt_path: Path, outputs_dir: Path) -> bool:
     """Return True if txt_path is a .txt without a corresponding .json output."""
     if txt_path.suffix != ".txt":
@@ -67,17 +65,19 @@ def process_transcript(txt_path: Path, outputs_dir: Path, script: Path = _SCRIPT
 
     output_tmp.write_text(result.stdout)
 
-    validation = subprocess.run(
-        [sys.executable, str(_VALIDATOR), str(output_tmp)],
-        capture_output=True,
-        text=True,
-    )
+    validation_error = ""
+    try:
+        validate_output_file(output_tmp)
+    except ValidationError as exc:
+        validation_error = str(exc)
     with log_file.open("a") as handle:
         handle.write("\n=== validation ===\n")
-        handle.write(validation.stdout)
-        handle.write(validation.stderr)
+        if validation_error:
+            handle.write(f"INVALID: {validation_error}\n")
+        else:
+            handle.write(f"VALID: {output_tmp}\n")
 
-    if validation.returncode != 0:
+    if validation_error:
         output_tmp.replace(invalid_json)
         log.error("Invalid output: %s → %s. See %s", txt_path.name, invalid_json.name, log_file)
         return

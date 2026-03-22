@@ -8,6 +8,9 @@ name: Validate Master Dev Prompt Outputs
       - master
       - add-mock-runner
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
