@@ -209,3 +209,32 @@ python3 watcher.py --transcripts ./my-transcripts --outputs ./my-outputs
 
 Stop with `Ctrl+C`. Files already processed (with a matching `.json` in `outputs/`) are skipped automatically.
 Schema failures are written to `outputs/<name>.invalid.json`, and validator details are appended to `outputs/<name>.log`.
+
+---
+
+## GitHub Actions Workflows
+
+Three workflows run automatically on the `main` branch:
+
+| Workflow | File | Trigger | Purpose |
+|---|---|---|---|
+| **Validate Master Dev Prompt** | `validate-master-dev-prompt.yml` | Push / PR to `main` | Installs Python deps, runs `make ci` (schema validation + pytest suite) |
+| **Copilot Auto-Fix** | `copilot-autofix.yml` | Push / PR | GitHub Copilot automated code fix suggestions |
+| **Cleanup Old Workflow Runs** | `cleanup-workflow-runs.yml` | Weekly (Sun 3am UTC) + manual | Deletes workflow run history older than 30 days via GitHub API |
+
+### Running CI locally
+
+```bash
+make ci
+```
+
+### Triggering the cleanup workflow manually
+
+1. Go to **Actions** → **Cleanup Old Workflow Runs**
+2. Click **Run workflow** → select branch `main` → **Run workflow**
+
+### Branch conventions
+
+- Default branch: `main`
+- Copilot feature branches are ephemeral — they are deleted after their PR is merged or closed
+- Do not force-push to `main`
