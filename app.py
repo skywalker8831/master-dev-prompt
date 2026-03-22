@@ -19,13 +19,19 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
+from master_dev_runtime import (
+    MAX_TOKENS,
+    MODEL,
+    PROMPT_PATH,
+    ValidationError,
+    build_user_message,
+    load_system_prompt,
+    parse_and_validate_output,
+)
 
 load_dotenv()
 
 app = FastAPI(title="Master Dev Prompt API")
-
-_MODEL = "claude-sonnet-4-6"
-_MAX_TOKENS = 8096
 
 
 def verify_api_key(x_api_key: Annotated[str | None, Header()] = None) -> None:
@@ -35,18 +41,6 @@ def verify_api_key(x_api_key: Annotated[str | None, Header()] = None) -> None:
     if not x_api_key or not hmac.compare_digest(x_api_key, server_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-_PROMPT_PATH = Path(__file__).parent / "master_dev_prompt.txt"
-_system_prompt: str | None = None
-
-
-def _get_system_prompt() -> str:
-    global _system_prompt
-    if _system_prompt is None:
-        if not _PROMPT_PATH.exists():
-            raise RuntimeError("master_dev_prompt.txt not found")
-        _system_prompt = _PROMPT_PATH.read_text()
-    return _system_prompt
-
 
 def _prepare_claude_call(transcript: str) -> tuple[anthropic.Anthropic, str, str]:
     """Return (client, system_prompt, user_message) ready for a Claude API call."""
@@ -54,8 +48,8 @@ def _prepare_claude_call(transcript: str) -> tuple[anthropic.Anthropic, str, str
     if not api_key:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not set")
     client = anthropic.Anthropic(api_key=api_key)
-    system = _get_system_prompt()
-    user_message = f'{transcript}\n"""'
+    system = load_system_prompt()
+    user_message = build_user_message(transcript)
     return client, system, user_message
 
 
@@ -75,19 +69,19 @@ def process_transcript(
     client, system, user_message = _prepare_claude_call(req.transcript)
 
     message = client.messages.create(
-        model=_MODEL,
-        max_tokens=_MAX_TOKENS,
+        model=MODEL,
+        max_tokens=MAX_TOKENS,
         system=system,
         messages=[{"role": "user", "content": user_message}],
     )
 
     raw = message.content[0].text
     try:
-        result = json.loads(raw)
-    except json.JSONDecodeError as e:
+        result = parse_and_validate_output(raw)
+    except ValidationError as exc:
         raise HTTPException(
             status_code=502,
-            detail=f"Model returned invalid JSON: {e}. Raw: {raw[:200]}",
+            detail=f"Model returned invalid output: {exc}. Raw: {raw[:200]}",
         )
 
     return ProcessResponse(result=result)
@@ -103,8 +97,8 @@ def process_transcript_stream(
     def generate():
         accumulated = ""
         with client.messages.stream(
-            model=_MODEL,
-            max_tokens=_MAX_TOKENS,
+            model=MODEL,
+            max_tokens=MAX_TOKENS,
             system=system,
             messages=[{"role": "user", "content": user_message}],
         ) as stream:
@@ -113,10 +107,10 @@ def process_transcript_stream(
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
 
         try:
-            result = json.loads(accumulated)
+            result = parse_and_validate_output(accumulated)
             yield f"data: {json.dumps({'done': True, 'result': result})}\n\n"
-        except json.JSONDecodeError as e:
-            yield f"data: {json.dumps({'error': str(e), 'raw': accumulated[:300]})}\n\n"
+        except ValidationError as exc:
+            yield f"data: {json.dumps({'error': str(exc), 'raw': accumulated[:300]})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
@@ -129,4 +123,4 @@ def ui() -> HTMLResponse:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "prompt_loaded": _PROMPT_PATH.exists()}
+    return {"status": "ok", "prompt_loaded": PROMPT_PATH.exists()}
