@@ -5,11 +5,11 @@ import pytest
 import validate_output
 
 
-SCRIPT_NAME = "validate_output.py"
+SCRIPT_NAME = Path(validate_output.__file__).name
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "ci" / "fixtures" / "valid_output.json"
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def reload_validate_output_module():
     importlib.reload(validate_output)
 

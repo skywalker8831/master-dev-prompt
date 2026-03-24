@@ -14,7 +14,7 @@ FIXTURE_PATH = Path(__file__).resolve().parents[1] / "ci" / "fixtures" / "valid_
 VALID_RESULT = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def reload_app_module():
     importlib.reload(app_module)
 
