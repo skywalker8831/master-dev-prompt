@@ -1,13 +1,21 @@
+import importlib
 from pathlib import Path
 
+import pytest
 import validate_output
 
 
+SCRIPT_NAME = "validate_output.py"
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "ci" / "fixtures" / "valid_output.json"
 
 
+@pytest.fixture(autouse=True)
+def reload_validate_output_module():
+    importlib.reload(validate_output)
+
+
 def test_main_requires_exactly_one_argument(monkeypatch, capsys):
-    monkeypatch.setattr(validate_output.sys, "argv", ["validate_output.py"])
+    monkeypatch.setattr(validate_output.sys, "argv", [SCRIPT_NAME])
 
     result = validate_output.main()
 
@@ -19,7 +27,7 @@ def test_main_requires_exactly_one_argument(monkeypatch, capsys):
 def test_main_reports_invalid_output(monkeypatch, tmp_path, capsys):
     invalid_path = tmp_path / "invalid.json"
     invalid_path.write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(validate_output.sys, "argv", ["validate_output.py", str(invalid_path)])
+    monkeypatch.setattr(validate_output.sys, "argv", [SCRIPT_NAME, str(invalid_path)])
 
     result = validate_output.main()
 
@@ -29,7 +37,7 @@ def test_main_reports_invalid_output(monkeypatch, tmp_path, capsys):
 
 
 def test_main_reports_valid_output(monkeypatch, capsys):
-    monkeypatch.setattr(validate_output.sys, "argv", ["validate_output.py", str(FIXTURE_PATH)])
+    monkeypatch.setattr(validate_output.sys, "argv", [SCRIPT_NAME, str(FIXTURE_PATH)])
 
     result = validate_output.main()
 

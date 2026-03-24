@@ -1,3 +1,4 @@
+import importlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,6 +12,11 @@ import app as app_module
 
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "ci" / "fixtures" / "valid_output.json"
 VALID_RESULT = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(autouse=True)
+def reload_app_module():
+    importlib.reload(app_module)
 
 
 # ── Fake runtime helpers for integration tests ───────────────────────────────
