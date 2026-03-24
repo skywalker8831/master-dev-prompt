@@ -9,6 +9,48 @@ One prompt. One Claude call. Full engineering package from any transcript.
 
 ---
 
+## Repository Overview
+
+This repository is a compact Python toolkit for turning a raw developer transcript into a **strictly validated engineering package**. It exposes the same core workflow in a few forms:
+
+- **CLI wrappers** for one-off and batch transcript processing
+- **A shared Python runtime** for prompt loading and JSON/schema validation
+- **A FastAPI server** with REST and streaming endpoints
+- **A watcher** that processes new transcript files automatically
+
+The center of the repo is `master_dev_runtime.py`. That module is the reusable core: it loads the master prompt, formats the transcript for the model call, parses model output as JSON, and enforces the repository's strict response schema. The CLI validator, API server, and watcher all reuse that same runtime instead of duplicating validation logic.
+
+### Key technologies
+
+- **Python 3.11+** for the runtime, API, validator, and watcher
+- **FastAPI** + **Pydantic** for the HTTP API and request/response models
+- **Anthropic Python SDK** for Claude API calls
+- **pytest** for tests
+- **watchdog** for filesystem watching
+- **Make** for local and CI validation commands
+
+### How the code is organized
+
+- **Prompt and schema flow**
+  - `master_dev_prompt.txt` defines the master prompt contract
+  - `master_dev_runtime.py` is the canonical implementation of prompt loading and output validation
+  - `validate_output.py` is a thin CLI wrapper around that shared runtime
+- **Execution entry points**
+  - `run_master_dev.sh` runs a single transcript through Claude/Codex
+  - `batch_run_master_dev.sh` processes all transcripts in a folder
+  - `watcher.py` watches `transcripts/` and writes validated results into `outputs/`
+  - `app.py` exposes the same workflow over HTTP
+- **User-facing assets**
+  - `static/index.html` is the browser UI served by FastAPI
+- **Verification and fixtures**
+  - `tests/` contains pytest coverage for the runtime, watcher, and API
+  - `ci/fixtures/valid_output.json` is the canonical valid output sample used in tests and validation
+- **Supporting directories**
+  - `transcripts/` holds input transcript samples
+  - `outputs/` holds generated JSON/log artifacts
+  - `.github/workflows/` contains CI automation, centered on `make ci`
+  - `docs/plans/` holds project plans and roadmap notes
+
 ## Files
 
 | File | Purpose |
