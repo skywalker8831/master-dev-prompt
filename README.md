@@ -26,6 +26,78 @@ One prompt. One Claude call. Full engineering package from any transcript.
 
 ---
 
+## Architecture Overview
+
+The toolkit is a pipeline with four entry points — all feeding the same shared runtime:
+
+```
+Transcript (.txt)
+      │
+      ├─── CLI ──────────── run_master_dev.sh           ┐
+      │                     (Bash, auto-detects claude   │
+      │                      or codex CLI)               │
+      │                                                  │
+      ├─── Batch ────────── batch_run_master_dev.sh      │  calls
+      │                     (orchestrates CLI runner)    ├─────────► Claude / Codex (LLM)
+      │                                                  │               │
+      ├─── Web API ──────── app.py (FastAPI)             │               │ raw JSON
+      │    + Web UI         POST /process                │               ▼
+      │    static/          POST /process/stream ────────┘     master_dev_runtime.py
+      │                                                         (parse_and_validate_output)
+      └─── Autopilot ────── watcher.py                                   │
+                            (watchdog, monitors                 ┌────────┴────────┐
+                             transcripts/ dir)                  │ valid           │ invalid
+                                                          outputs/*.json   outputs/*.invalid.json
+                                                                           outputs/*.log
+```
+
+**Key modules and their roles:**
+
+| Module | Role |
+|--------|------|
+| `master_dev_prompt.txt` | Defines both the AI instructions and the JSON output contract (schema) |
+| `master_dev_runtime.py` | Single source of truth: prompt loading, schema validation, shared enums — imported by all other Python components |
+| `app.py` | FastAPI server; calls Claude directly via the Anthropic SDK; serves the web UI |
+| `watcher.py` | Zero-touch autopilot; monitors a directory and triggers processing automatically |
+| `validate_output.py` | Standalone CLI validator; useful in shell pipelines and `make` targets |
+| `run_master_dev.sh` | Bash entry point; pipes transcript + system prompt to the model CLI |
+
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| AI model | Claude (Anthropic SDK `anthropic>=0.30`), or `claude`/`codex exec` CLI |
+| Backend | Python 3.11+, FastAPI, Uvicorn |
+| Schema validation | Custom engine in `master_dev_runtime.py` (no external schema library) |
+| File watching | Watchdog |
+| Testing | pytest, httpx (for FastAPI test client) |
+| CI/CD | GitHub Actions, Makefile |
+| Frontend | Vanilla HTML/JS (`static/index.html`, terminal-style UI) |
+| Scripting | Bash (`run_master_dev.sh`, `batch_run_master_dev.sh`) |
+
+---
+
+## How It Works
+
+1. **Prompt construction** — `master_dev_prompt.txt` is the system prompt. It instructs Claude to emit a strict JSON structure. The user message is simply the raw transcript followed by a closing `"""`.
+2. **Model call** — Any entry point (CLI, API, watcher) sends the combined prompt + transcript to Claude (or Codex) and receives raw JSON.
+3. **Validation** — `master_dev_runtime.parse_and_validate_output()` parses the JSON and checks every field, enum value, and non-empty array against the schema. An invalid response raises `ValidationError`.
+4. **Output routing** — Valid results go to `outputs/<name>.json`; invalid results go to `outputs/<name>.invalid.json` with a matching `.log` file for debugging.
+
+The **JSON output schema** has five top-level keys:
+
+| Key | Contents |
+|-----|---------|
+| `design_doc` | context, requirements, architecture, alternatives, decisions, risks |
+| `pm_summary` | overview, scope, timeline implications |
+| `actions` | task list with owner, priority (`low`/`medium`/`high`), type |
+| `implementation_plan` | milestones (name, ETA, risks) + tech tasks (area, complexity `S`/`M`/`L`) |
+| `code_suggestions` | language, stack context, runnable code snippets |
+
+---
+
 ## Usage
 
 ### 1. Make the script executable (first time only)
