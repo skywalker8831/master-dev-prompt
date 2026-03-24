@@ -278,3 +278,88 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+# ── _prepare_claude_call ──────────────────────────────────────────────────────
+
+def test_prepare_claude_call_raises_without_api_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    from app import _prepare_claude_call
+
+    with pytest.raises(HTTPException) as exc_info:
+        _prepare_claude_call("some transcript")
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY not set" in exc_info.value.detail
+
+
+def test_prepare_claude_call_returns_client_system_and_message(monkeypatch):
+    from unittest.mock import MagicMock, patch
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+
+    from app import _prepare_claude_call
+
+    with patch("app.anthropic.Anthropic") as mock_cls:
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        client, system, user_message = _prepare_claude_call("my transcript")
+
+    mock_cls.assert_called_once_with(api_key="sk-test")
+    assert client is mock_client
+    assert isinstance(system, str) and len(system) > 0
+    assert "my transcript" in user_message
+
+
+# ── health endpoint ───────────────────────────────────────────────────────────
+
+def test_health_endpoint():
+    client = TestClient(app_module.app)
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "prompt_loaded" in data
+    assert isinstance(data["prompt_loaded"], bool)
+
+
+# ── UI endpoint ───────────────────────────────────────────────────────────────
+
+def test_ui_endpoint_returns_html_when_file_exists():
+    client = TestClient(app_module.app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+
+
+def test_ui_endpoint_returns_404_when_no_html():
+    from unittest.mock import patch
+
+    client = TestClient(app_module.app)
+    with patch("pathlib.Path.exists", return_value=False):
+        response = client.get("/")
+    assert response.status_code == 404
+    assert "UI not found" in response.text
+
+
+# ── stream endpoint API key guard ─────────────────────────────────────────────
+
+def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "stream-secret")
+    chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
+    client = TestClient(app_module.app)
+
+    with client.stream("POST", "/process/stream", json={"transcript": "hello"}) as unauthorized:
+        pass
+    with client.stream(
+        "POST",
+        "/process/stream",
+        json={"transcript": "hello"},
+        headers={"X-Api-Key": "stream-secret"},
+    ) as authorized:
+        authorized_body = "".join(authorized.iter_text())
+
+    assert unauthorized.status_code == 401
+    assert authorized.status_code == 200
+    assert '"done": true' in authorized_body
