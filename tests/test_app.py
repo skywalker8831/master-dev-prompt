@@ -278,3 +278,61 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+# ── _prepare_claude_call ──────────────────────────────────────────────────────
+
+def test_prepare_claude_call_raises_when_api_key_missing(monkeypatch):
+    from app import _prepare_claude_call
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _prepare_claude_call("some transcript")
+
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY" in exc_info.value.detail
+
+
+def test_prepare_claude_call_returns_tuple_with_api_key(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+    from app import _prepare_claude_call
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    fake_client = MagicMock()
+
+    with patch("app.anthropic.Anthropic", return_value=fake_client) as mock_anthropic, \
+         patch("app.load_system_prompt", return_value="system prompt") as mock_prompt:
+        client, system, user_message = _prepare_claude_call("my transcript")
+
+    assert client is fake_client
+    assert system == "system prompt"
+    assert "my transcript" in user_message
+    mock_anthropic.assert_called_once_with(api_key="fake-key")
+
+
+# ── health endpoint ───────────────────────────────────────────────────────────
+
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "prompt_loaded" in data
+
+
+# ── UI endpoint ───────────────────────────────────────────────────────────────
+
+def test_ui_endpoint_responds():
+    """The UI endpoint must always respond with HTML, regardless of whether index.html exists."""
+    client = TestClient(app_module.app)
+
+    response = client.get("/")
+
+    # 200 if static/index.html exists in the repo; 404 if it does not
+    assert response.status_code in (200, 404)
+    assert "text/html" in response.headers.get("content-type", "")
