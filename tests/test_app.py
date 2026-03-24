@@ -232,6 +232,16 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
     assert authorized.status_code == 200
 
 
+def test_process_endpoint_rejects_wrong_api_key_when_configured(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "secret")
+    _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
+    client = TestClient(app_module.app)
+
+    response = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "wrong"})
+
+    assert response.status_code == 401
+
+
 def test_stream_endpoint_emits_done_for_schema_valid_output(monkeypatch):
     chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
     _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
@@ -278,3 +288,12 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+def test_health_endpoint_reports_prompt_file_status():
+    client = TestClient(app_module.app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "prompt_loaded": True}

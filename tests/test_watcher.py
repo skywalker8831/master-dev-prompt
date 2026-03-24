@@ -83,3 +83,39 @@ def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
     assert "runner stderr" in log_text
     assert "=== validation ===" in log_text
     assert "INVALID: $ keys mismatch" in log_text
+
+
+def test_process_transcript_stops_on_runner_failure(tmp_path):
+    from watcher import process_transcript
+
+    txt = tmp_path / "meeting.txt"
+    txt.write_text("transcript content")
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    script = tmp_path / "run_master_dev.sh"
+    script.write_text("#!/bin/bash\nexit 1")
+    script.chmod(0o755)
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="runner stderr\n")
+
+        process_transcript(txt, outputs_dir, script)
+
+    assert not (outputs_dir / "meeting.json").exists()
+    assert not (outputs_dir / "meeting.tmp.json").exists()
+    assert not (outputs_dir / "meeting.invalid.json").exists()
+    assert (outputs_dir / "meeting.log").read_text() == "runner stderr\n"
+
+
+def test_transcript_handler_ignores_directory_events(tmp_path):
+    from watcher import TranscriptHandler
+
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    handler = TranscriptHandler(outputs_dir=outputs_dir)
+    event = MagicMock(is_directory=True)
+
+    with patch("watcher.process_transcript") as mock_process:
+        handler.on_created(event)
+
+    mock_process.assert_not_called()
