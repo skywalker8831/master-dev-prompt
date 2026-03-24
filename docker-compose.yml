@@ -1,0 +1,13 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SERVER_API_KEY=${SERVER_API_KEY:-}
+      - MASTER_DEV_MODEL=${MASTER_DEV_MODEL:-claude-sonnet-4-6}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    volumes:
+      - ./outputs:/app/outputs
+      - ./transcripts:/app/transcripts

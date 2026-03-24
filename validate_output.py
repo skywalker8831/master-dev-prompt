@@ -13,10 +13,18 @@ def main() -> int:
         return 2
 
     json_path = Path(sys.argv[1])
+
+    if not json_path.exists():
+        print(f"ERROR: File not found: {json_path}", file=sys.stderr)
+        return 1
+
     try:
         validate_output_file(json_path)
     except ValidationError as exc:
         print(f"INVALID: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
     print(f"VALID: {json_path}")

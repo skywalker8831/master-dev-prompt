@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 PROMPT_PATH = Path(__file__).parent / "master_dev_prompt.txt"
-MODEL = "claude-sonnet-4-6"
+MODEL: str = os.getenv("MASTER_DEV_MODEL", "claude-sonnet-4-6")
 MAX_TOKENS = 8096
 
 PRIORITY = {"low", "medium", "high"}

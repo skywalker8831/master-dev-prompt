@@ -18,8 +18,9 @@ from typing import Annotated, Literal
 import anthropic
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from master_dev_runtime import (
     MAX_TOKENS,
     MODEL,
@@ -33,6 +34,14 @@ from master_dev_runtime import (
 load_dotenv()
 
 app = FastAPI(title="Master Dev Prompt API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["X-Api-Key", "Content-Type"],
+)
 
 
 def verify_api_key(x_api_key: Annotated[str | None, Header()] = None) -> None:
@@ -105,6 +114,18 @@ class ProcessRequest(BaseModel):
     transcript: str
     repo_url: str | None = None
     delivery: DeliveryConfig | None = None
+
+    @field_validator("transcript")
+    @classmethod
+    def transcript_must_not_be_empty(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("transcript must not be empty")
+        if len(stripped) < 20:
+            raise ValueError("transcript is too short (minimum 20 characters)")
+        if len(stripped) > 100_000:
+            raise ValueError("transcript exceeds maximum length (100,000 characters)")
+        return v
 
 
 class ProcessResponse(BaseModel):

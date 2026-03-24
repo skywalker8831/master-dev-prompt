@@ -122,7 +122,7 @@ def test_process_request_accepts_repo_url_and_delivery():
     from app import DeliveryConfig, ProcessRequest
 
     req = ProcessRequest(
-        transcript="some transcript",
+        transcript="This is a valid transcript with enough characters.",
         repo_url="https://github.com/octocat/Hello-World",
         delivery=DeliveryConfig(mode="pr", branch="main"),
     )
@@ -136,7 +136,7 @@ def test_process_request_delivery_push_mode():
     from app import DeliveryConfig, ProcessRequest
 
     req = ProcessRequest(
-        transcript="some transcript",
+        transcript="This is a valid transcript with enough characters.",
         delivery=DeliveryConfig(mode="push", branch="develop"),
     )
     assert req.delivery is not None
@@ -147,7 +147,7 @@ def test_process_request_delivery_push_mode():
 def test_process_request_optional_fields_default_none():
     from app import ProcessRequest
 
-    req = ProcessRequest(transcript="some transcript")
+    req = ProcessRequest(transcript="This is a valid transcript with enough characters.")
     assert req.repo_url is None
     assert req.delivery is None
 
@@ -159,13 +159,48 @@ def test_delivery_config_default_branch():
     assert cfg.branch == "main"
 
 
+# ── Input validation tests ────────────────────────────────────────────────────
+
+def test_process_request_rejects_empty_transcript():
+    from app import ProcessRequest
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError, match="must not be empty"):
+        ProcessRequest(transcript="   ")
+
+
+def test_process_request_rejects_too_short_transcript():
+    from app import ProcessRequest
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError, match="too short"):
+        ProcessRequest(transcript="hello")
+
+
+def test_process_request_rejects_too_long_transcript():
+    from app import ProcessRequest
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError, match="maximum length"):
+        ProcessRequest(transcript="x" * 100_001)
+
+
+def test_process_endpoint_rejects_empty_transcript(monkeypatch):
+    _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
+    client = TestClient(app_module.app)
+
+    response = client.post("/process", json={"transcript": "   "})
+
+    assert response.status_code == 422
+
+
 # ── Integration tests (TestClient + monkeypatched runtime) ────────────────────
 
 def test_process_endpoint_returns_schema_validated_result(monkeypatch):
     _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
     client = TestClient(app_module.app)
 
-    response = client.post("/process", json={"transcript": "hello"})
+    response = client.post("/process", json={"transcript": "This is a sample meeting transcript for testing purposes."})
 
     assert response.status_code == 200
     assert response.json()["result"]["code_suggestions"]["language"] == "python"
@@ -178,7 +213,7 @@ def test_process_endpoint_returns_repo_and_delivery_when_provided(monkeypatch):
     response = client.post(
         "/process",
         json={
-            "transcript": "hello",
+            "transcript": "This is a sample meeting transcript for testing purposes.",
             "repo_url": "https://github.com/octocat/Hello-World",
             "delivery": {"mode": "pr", "branch": "main"},
         },
@@ -196,7 +231,7 @@ def test_process_endpoint_rejects_list_url(monkeypatch):
 
     response = client.post(
         "/process",
-        json={"transcript": "hello", "repo_url": "https://github.com/skywalker8888?tab=repositories"},
+        json={"transcript": "This is a sample meeting transcript for testing purposes.", "repo_url": "https://github.com/skywalker8888?tab=repositories"},
     )
 
     assert response.status_code == 422
@@ -213,7 +248,7 @@ def test_process_endpoint_rejects_schema_invalid_output(monkeypatch):
     _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(invalid_result)))
     client = TestClient(app_module.app)
 
-    response = client.post("/process", json={"transcript": "hello"})
+    response = client.post("/process", json={"transcript": "This is a sample meeting transcript for testing purposes."})
 
     assert response.status_code == 502
     assert "invalid output" in response.json()["detail"]
@@ -225,8 +260,8 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
     _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
     client = TestClient(app_module.app)
 
-    unauthorized = client.post("/process", json={"transcript": "hello"})
-    authorized = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
+    unauthorized = client.post("/process", json={"transcript": "This is a sample meeting transcript for testing purposes."})
+    authorized = client.post("/process", json={"transcript": "This is a sample meeting transcript for testing purposes."}, headers={"X-Api-Key": "secret"})
 
     assert unauthorized.status_code == 401
     assert authorized.status_code == 200
@@ -237,7 +272,7 @@ def test_stream_endpoint_emits_done_for_schema_valid_output(monkeypatch):
     _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
     client = TestClient(app_module.app)
 
-    with client.stream("POST", "/process/stream", json={"transcript": "hello"}) as response:
+    with client.stream("POST", "/process/stream", json={"transcript": "This is a sample meeting transcript for testing purposes."}) as response:
         body = "".join(response.iter_text())
 
     assert response.status_code == 200
@@ -254,7 +289,7 @@ def test_stream_endpoint_emits_repo_and_delivery_in_done_event(monkeypatch):
         "POST",
         "/process/stream",
         json={
-            "transcript": "hello",
+            "transcript": "This is a sample meeting transcript for testing purposes.",
             "repo_url": "https://github.com/octocat/Hello-World",
             "delivery": {"mode": "push", "branch": "develop"},
         },
@@ -272,7 +307,7 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     _install_fake_runtime(monkeypatch, _FakeClient(chunks=[invalid_json]))
     client = TestClient(app_module.app)
 
-    with client.stream("POST", "/process/stream", json={"transcript": "hello"}) as response:
+    with client.stream("POST", "/process/stream", json={"transcript": "This is a sample meeting transcript for testing purposes."}) as response:
         body = "".join(response.iter_text())
 
     assert response.status_code == 200

@@ -29,6 +29,24 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 _SCRIPT = Path(__file__).parent / "run_master_dev.sh"
+
+
+def _wait_for_stable(path: Path, interval: float = 0.5, max_wait: float = 10.0) -> bool:
+    """Poll file size until it stops changing. Returns True when stable, False on timeout."""
+    deadline = time.monotonic() + max_wait
+    last_size = -1
+    while time.monotonic() < deadline:
+        try:
+            size = path.stat().st_size
+        except FileNotFoundError:
+            return False
+        if size == last_size and size > 0:
+            return True
+        last_size = size
+        time.sleep(interval)
+    return False
+
+
 def should_process(txt_path: Path, outputs_dir: Path) -> bool:
     """Return True if txt_path is a .txt without a corresponding .json output."""
     if txt_path.suffix != ".txt":
@@ -95,6 +113,11 @@ class TranscriptHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         txt = Path(event.src_path)
+        if txt.suffix != ".txt":
+            return
+        if not _wait_for_stable(txt):
+            log.warning("File did not stabilize, skipping: %s", txt)
+            return
         if should_process(txt, self.outputs_dir):
             process_transcript(txt, self.outputs_dir, self.script)
 
