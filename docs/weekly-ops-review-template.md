@@ -77,9 +77,9 @@
 
 ## 8. Wins This Week
 
-- 
-- 
-- 
+- [Describe a notable win or achievement this week]
+- [Describe a notable win or achievement this week]
+- [Describe a notable win or achievement this week]
 
 ---
 
@@ -93,17 +93,17 @@
 
 ## 10. Next Week Priorities
 
-1. 
-2. 
-3. 
+1. Top priority for next week (e.g., stabilize CI for critical repos)
+2. Second priority (e.g., reduce high-severity incident volume by X%)
+3. Third priority (e.g., complete rollout of workflow or process change)
 
 ---
 
 ## 11. Continuous Improvement Items
 
-- [ ] 
-- [ ] 
-- [ ] 
+- [ ] Process improvement to trial next week (e.g., adjust intake workflow)
+- [ ] Tooling or automation improvement (e.g., add or refine a script/check)
+- [ ] Documentation or training improvement (e.g., update runbooks or SOPs)
 
 ---
 
