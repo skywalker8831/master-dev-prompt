@@ -225,9 +225,11 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
     _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
     client = TestClient(app_module.app)
 
-    unauthorized_response = client.post("/process", json={"transcript": "hello"})
-    wrong_key_response = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "bad"})
-    authorized_response = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
+    payload = {"transcript": "hello"}
+
+    unauthorized_response = client.post("/process", json=payload)
+    wrong_key_response = client.post("/process", json=payload, headers={"X-Api-Key": "bad"})
+    authorized_response = client.post("/process", json=payload, headers={"X-Api-Key": "secret"})
 
     assert unauthorized_response.status_code == 401
     assert unauthorized_response.json()["detail"] == "Unauthorized"
@@ -290,9 +292,11 @@ def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
     _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
     client = TestClient(app_module.app)
 
-    unauthorized_response = client.post("/process/stream", json={"transcript": "hello"})
-    wrong_key_response = client.post("/process/stream", json={"transcript": "hello"}, headers={"X-Api-Key": "bad"})
-    authorized_response = client.post("/process/stream", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
+    payload = {"transcript": "hello"}
+
+    unauthorized_response = client.post("/process/stream", json=payload)
+    wrong_key_response = client.post("/process/stream", json=payload, headers={"X-Api-Key": "bad"})
+    authorized_response = client.post("/process/stream", json=payload, headers={"X-Api-Key": "secret"})
 
     assert unauthorized_response.status_code == 401
     assert unauthorized_response.json()["detail"] == "Unauthorized"
