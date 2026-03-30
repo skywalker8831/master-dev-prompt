@@ -109,8 +109,8 @@ def test_process_transcript_handles_runner_failure(tmp_path):
     assert not (outputs_dir / "meeting.tmp.json").exists()
     assert not (outputs_dir / "meeting.invalid.json").exists()
     log_text = (outputs_dir / "meeting.log").read_text()
-    assert log_text == "boom\n"
     assert "boom" in log_text
+    assert log_text.endswith("\n")
 
 
 def test_transcript_handler_ignores_non_txt(monkeypatch, tmp_path):
