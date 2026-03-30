@@ -1,0 +1,50 @@
+We're building the Copilot AI PIN — a wearable AI assistant device that clips onto
+clothing and pairs with an iPhone and optional smart glasses (e.g., Ray-Ban Meta).
+
+The device should capture ambient audio and short video clips via a small camera/mic
+module (Raspberry Pi Zero 2 W or similar). On-device processing handles wake-word
+detection ("Hey Copilot"). All heavier inference is offloaded to a companion iPhone
+app over Bluetooth LE.
+
+iPhone app responsibilities:
+  - Receives audio chunks from the PIN via BLE GATT
+  - Sends transcription requests to OpenAI Whisper API
+  - Sends follow-up queries to GPT-4o for contextual responses
+  - Pushes text responses back to the PIN for display / TTS
+  - Syncs sessions to iCloud for history
+
+Smart glasses integration (Ray-Ban Meta / generic BLE glasses):
+  - Display short response summaries as overlaid text via companion glasses SDK
+  - Trigger photo capture on glasses when user says "capture" keyword
+  - Glasses feed image to iPhone app → GPT-4V for visual question answering
+
+Key technical decisions made:
+  - BLE stack: CoreBluetooth on iOS; BlueZ on the Pi
+  - Wake-word engine: Porcupine (runs on Pi, no cloud call)
+  - Speech-to-text: OpenAI Whisper API (on iPhone side)
+  - LLM: GPT-4o for general Q&A; GPT-4V when an image is attached
+  - TTS: iOS AVSpeechSynthesizer for earpiece; future HW speaker on PIN
+  - Local context storage: Core Data + iCloud sync
+
+Team and owners:
+  - Maya: hardware schematic & Pi firmware (C / Python)
+  - Carlos: iOS companion app (Swift / SwiftUI)
+  - Priya: backend relay service and API key management (FastAPI / Python)
+  - Entire team: integration testing by end of Month 2
+
+Timeline: 3-month MVP sprint.
+  Month 1 — PIN hardware prototype + BLE link
+  Month 2 — iPhone app feature-complete + glasses passthrough
+  Month 3 — polish, power optimization, TestFlight beta
+
+Risks:
+  - BLE audio streaming latency may exceed 200 ms; may need compression codec (Opus)
+  - Porcupine free tier limited to one custom keyword; paid license needed for GA
+  - Apple MFi / BLE accessory guidelines may restrict certain GATT profiles
+  - Smart glasses SDK is early-access and could break between firmware updates
+  - Power budget on Pi Zero is tight — estimated 4-hour battery life needs validation
+
+Open questions:
+  - Do we need a local fallback LLM (e.g., llama.cpp on-device) for offline use?
+  - Should the PIN have a small e-ink display for text, or rely solely on glasses + audio?
+  - Privacy / data retention policy for audio clips stored in iCloud?
