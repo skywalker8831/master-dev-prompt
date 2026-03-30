@@ -159,6 +159,25 @@ def test_delivery_config_default_branch():
     assert cfg.branch == "main"
 
 
+def test_health_endpoint_reports_status_and_prompt_state():
+    client = TestClient(app_module.app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "prompt_loaded": True}
+
+
+def test_ui_endpoint_serves_html():
+    client = TestClient(app_module.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "<!DOCTYPE html>" in response.text
+
+
 # ── Integration tests (TestClient + monkeypatched runtime) ────────────────────
 
 def test_process_endpoint_returns_schema_validated_result(monkeypatch):
@@ -230,6 +249,17 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
 
     assert unauthorized.status_code == 401
     assert authorized.status_code == 200
+
+
+def test_process_endpoint_returns_500_when_anthropic_key_missing(monkeypatch):
+    monkeypatch.delenv("SERVER_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app_module.app)
+
+    response = client.post("/process", json={"transcript": "hello"})
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "ANTHROPIC_API_KEY not set"
 
 
 def test_stream_endpoint_emits_done_for_schema_valid_output(monkeypatch):

@@ -1,6 +1,8 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "ci" / "fixtures" / "valid_output.json"
 VALID_OUTPUT = FIXTURE_PATH.read_text(encoding="utf-8")
 
@@ -83,3 +85,61 @@ def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
     assert "runner stderr" in log_text
     assert "=== validation ===" in log_text
     assert "INVALID: $ keys mismatch" in log_text
+
+
+def test_transcript_handler_ignores_directory_events(tmp_path):
+    from watcher import TranscriptHandler
+
+    handler = TranscriptHandler(outputs_dir=tmp_path)
+    event = MagicMock(is_directory=True, src_path=str(tmp_path / "meeting.txt"))
+
+    with patch("watcher.process_transcript") as mock_process:
+        handler.on_created(event)
+
+    mock_process.assert_not_called()
+
+
+def test_transcript_handler_processes_new_txt_files(tmp_path):
+    from watcher import TranscriptHandler
+
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    txt = tmp_path / "meeting.txt"
+    txt.write_text("hello")
+    handler = TranscriptHandler(outputs_dir=outputs_dir)
+    event = MagicMock(is_directory=False, src_path=str(txt))
+
+    with patch("watcher.process_transcript") as mock_process:
+        handler.on_created(event)
+
+    mock_process.assert_called_once_with(txt, outputs_dir, handler.script)
+
+
+def test_transcript_handler_skips_existing_outputs(tmp_path):
+    from watcher import TranscriptHandler
+
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    txt = tmp_path / "meeting.txt"
+    txt.write_text("hello")
+    (outputs_dir / "meeting.json").write_text("{}")
+    handler = TranscriptHandler(outputs_dir=outputs_dir)
+    event = MagicMock(is_directory=False, src_path=str(txt))
+
+    with patch("watcher.process_transcript") as mock_process:
+        handler.on_created(event)
+
+    mock_process.assert_not_called()
+
+
+def test_main_exits_when_transcripts_directory_is_missing(tmp_path, monkeypatch):
+    import watcher
+
+    missing_dir = tmp_path / "missing"
+    outputs_dir = tmp_path / "outputs"
+    monkeypatch.setattr("sys.argv", ["watcher.py", "--transcripts", str(missing_dir), "--outputs", str(outputs_dir)])
+
+    with pytest.raises(SystemExit) as exc_info:
+        watcher.main()
+
+    assert exc_info.value.code == 1
