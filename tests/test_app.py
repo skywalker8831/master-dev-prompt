@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -278,3 +279,66 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+# ── _prepare_claude_call without API key ─────────────────────────────────────
+
+def test_prepare_claude_call_raises_500_without_api_key(monkeypatch):
+    """_prepare_claude_call should raise HTTPException(500) when ANTHROPIC_API_KEY is not set."""
+    from app import _prepare_claude_call
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    with pytest.raises(HTTPException) as exc_info:
+        _prepare_claude_call("some transcript")
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY" in exc_info.value.detail
+
+
+def test_process_endpoint_returns_500_when_no_api_key(monkeypatch):
+    """The /process endpoint returns 500 when ANTHROPIC_API_KEY is absent."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # Do NOT monkeypatch _prepare_claude_call so the real one runs.
+    client = TestClient(app_module.app, raise_server_exceptions=False)
+    response = client.post("/process", json={"transcript": "hello"})
+    assert response.status_code == 500
+    assert "ANTHROPIC_API_KEY" in response.json()["detail"]
+
+
+# ── /health endpoint ──────────────────────────────────────────────────────────
+
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "prompt_loaded" in data
+
+
+# ── / UI endpoint ─────────────────────────────────────────────────────────────
+
+def test_ui_endpoint_via_test_client():
+    """GET / through TestClient returns a 200 (html exists) or 404 (html absent)."""
+    client = TestClient(app_module.app)
+    response = client.get("/")
+    # Accept either 200 (html file present) or 404 (html file absent in CI)
+    assert response.status_code in (200, 404)
+    assert "text/html" in response.headers["content-type"]
+
+
+def test_prepare_claude_call_returns_client_and_messages(monkeypatch):
+    """_prepare_claude_call should return (client, system, user_message) when API key is set."""
+    import anthropic as anthropic_module
+    from app import _prepare_claude_call
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+    fake_client = MagicMock()
+    with patch.object(anthropic_module, "Anthropic", return_value=fake_client) as mock_anthropic:
+        client, system, user_message = _prepare_claude_call("My transcript")
+
+    mock_anthropic.assert_called_once_with(api_key="test-key")
+    assert client is fake_client
+    assert isinstance(system, str)
+    assert len(system) > 0
+    assert user_message.startswith("My transcript")
+    assert user_message.endswith('"""')
