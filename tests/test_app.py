@@ -228,13 +228,14 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
     payload = {"transcript": "hello"}
 
     unauthorized_response = client.post("/process", json=payload)
-    wrong_key_response = client.post("/process", json=payload, headers={"X-Api-Key": "bad"})
-    authorized_response = client.post("/process", json=payload, headers={"X-Api-Key": "secret"})
-
     assert unauthorized_response.status_code == 401
     assert unauthorized_response.json()["detail"] == "Unauthorized"
+
+    wrong_key_response = client.post("/process", json=payload, headers={"X-Api-Key": "bad"})
     assert wrong_key_response.status_code == 401
     assert wrong_key_response.json()["detail"] == "Unauthorized"
+
+    authorized_response = client.post("/process", json=payload, headers={"X-Api-Key": "secret"})
     assert authorized_response.status_code == 200
 
 
@@ -295,13 +296,14 @@ def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
     payload = {"transcript": "hello"}
 
     unauthorized_response = client.post("/process/stream", json=payload)
-    wrong_key_response = client.post("/process/stream", json=payload, headers={"X-Api-Key": "bad"})
-    authorized_response = client.post("/process/stream", json=payload, headers={"X-Api-Key": "secret"})
-
     assert unauthorized_response.status_code == 401
     assert unauthorized_response.json()["detail"] == "Unauthorized"
+
+    wrong_key_response = client.post("/process/stream", json=payload, headers={"X-Api-Key": "bad"})
     assert wrong_key_response.status_code == 401
     assert wrong_key_response.json()["detail"] == "Unauthorized"
+
+    authorized_response = client.post("/process/stream", json=payload, headers={"X-Api-Key": "secret"})
     assert authorized_response.status_code == 200
 
 
