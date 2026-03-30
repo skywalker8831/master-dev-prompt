@@ -226,11 +226,11 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
     client = TestClient(app_module.app)
 
     unauthorized = client.post("/process", json={"transcript": "hello"})
-    wrong_key = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "nope"})
+    wrong_key_response = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "nope"})
     authorized = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
 
     assert unauthorized.status_code == 401
-    assert wrong_key.status_code == 401
+    assert wrong_key_response.status_code == 401
     assert authorized.status_code == 200
 
 
@@ -289,11 +289,11 @@ def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
     client = TestClient(app_module.app)
 
     unauthorized = client.post("/process/stream", json={"transcript": "hello"})
-    wrong_key = client.post("/process/stream", json={"transcript": "hello"}, headers={"X-Api-Key": "bad"})
+    wrong_key_response = client.post("/process/stream", json={"transcript": "hello"}, headers={"X-Api-Key": "bad"})
     authorized = client.post("/process/stream", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
 
     assert unauthorized.status_code == 401
-    assert wrong_key.status_code == 401
+    assert wrong_key_response.status_code == 401
     assert authorized.status_code == 200
 
 
