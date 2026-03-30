@@ -226,11 +226,12 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
     client = TestClient(app_module.app)
 
     unauthorized_response = client.post("/process", json={"transcript": "hello"})
-    wrong_key_response = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "nope"})
+    wrong_key_response = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "bad"})
     authorized_response = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
 
     assert unauthorized_response.status_code == 401
     assert wrong_key_response.status_code == 401
+    assert wrong_key_response.json()["detail"] == "Unauthorized"
     assert authorized_response.status_code == 200
 
 
@@ -294,6 +295,7 @@ def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
 
     assert unauthorized_response.status_code == 401
     assert wrong_key_response.status_code == 401
+    assert wrong_key_response.json()["detail"] == "Unauthorized"
     assert authorized_response.status_code == 200
 
 
