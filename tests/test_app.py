@@ -226,9 +226,11 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
     client = TestClient(app_module.app)
 
     unauthorized = client.post("/process", json={"transcript": "hello"})
+    wrong_key = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "nope"})
     authorized = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
 
     assert unauthorized.status_code == 401
+    assert wrong_key.status_code == 401
     assert authorized.status_code == 200
 
 
@@ -278,3 +280,40 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "secret")
+    chunks = [json.dumps(VALID_RESULT)]
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
+    client = TestClient(app_module.app)
+
+    unauthorized = client.post("/process/stream", json={"transcript": "hello"})
+    wrong_key = client.post("/process/stream", json={"transcript": "hello"}, headers={"X-Api-Key": "bad"})
+    authorized = client.post("/process/stream", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
+
+    assert unauthorized.status_code == 401
+    assert wrong_key.status_code == 401
+    assert authorized.status_code == 200
+
+
+def test_stream_endpoint_rejects_invalid_repo_url(monkeypatch):
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=[json.dumps(VALID_RESULT)]))
+    client = TestClient(app_module.app)
+
+    response = client.post(
+        "/process/stream",
+        json={"transcript": "hello", "repo_url": "https://gitlab.com/user/repo"},
+    )
+
+    assert response.status_code == 422
+    assert "Invalid GitHub repository URL" in response.json()["detail"]
+
+
+def test_prepare_claude_call_requires_api_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    with pytest.raises(app_module.HTTPException) as exc_info:
+        app_module._prepare_claude_call("hello")
+
+    assert exc_info.value.status_code == 500
