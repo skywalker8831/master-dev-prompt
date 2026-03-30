@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-import master_dev_runtime as runtime
+import master_dev_runtime
 from master_dev_runtime import ValidationError, load_system_prompt, parse_and_validate_output, validate_output_file
 
 
@@ -88,7 +88,7 @@ def test_validate_output_file_rejects_missing_path(tmp_path):
 
 def test_load_system_prompt_raises_when_file_missing(monkeypatch, tmp_path):
     fake_path = tmp_path / "nope.txt"
-    monkeypatch.setattr(runtime, "_system_prompt", None)
+    monkeypatch.setattr(master_dev_runtime, "_system_prompt", None)
 
     with pytest.raises(RuntimeError, match="master_dev_prompt.txt not found"):
         load_system_prompt(fake_path)

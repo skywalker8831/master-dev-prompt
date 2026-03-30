@@ -101,6 +101,10 @@ def test_process_transcript_handles_runner_failure(tmp_path):
 
         process_transcript(txt, outputs_dir, script)
 
+        mock_run.assert_called_once()
+        runner_args = mock_run.call_args_list[0][0][0]
+        assert runner_args == [str(script), str(txt)]
+
     assert not (outputs_dir / "meeting.json").exists()
     assert not (outputs_dir / "meeting.tmp.json").exists()
     assert not (outputs_dir / "meeting.invalid.json").exists()
