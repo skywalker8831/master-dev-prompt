@@ -220,6 +220,16 @@ def test_process_endpoint_rejects_schema_invalid_output(monkeypatch):
     assert "$ keys mismatch" in response.json()["detail"]
 
 
+def test_process_endpoint_allows_open_access_when_no_server_key(monkeypatch):
+    monkeypatch.delenv("SERVER_API_KEY", raising=False)
+    _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
+    client = TestClient(app_module.app)
+
+    response = client.post("/process", json={"transcript": "hello"})
+
+    assert response.status_code == 200
+
+
 def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
     monkeypatch.setenv("SERVER_API_KEY", "secret")
     _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
@@ -227,6 +237,19 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
 
     unauthorized = client.post("/process", json={"transcript": "hello"})
     authorized = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
+
+    assert unauthorized.status_code == 401
+    assert authorized.status_code == 200
+
+
+def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "secret")
+    chunks = [json.dumps(VALID_RESULT)]
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
+    client = TestClient(app_module.app)
+
+    unauthorized = client.post("/process/stream", json={"transcript": "hello"})
+    authorized = client.post("/process/stream", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"})
 
     assert unauthorized.status_code == 401
     assert authorized.status_code == 200
@@ -278,3 +301,51 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+def test_prepare_claude_call_requires_api_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(app_module, "_system_prompt", None, raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        app_module._prepare_claude_call("hi")
+
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY not set" in exc_info.value.detail
+
+
+def test_ui_serves_static_file(monkeypatch, tmp_path):
+    app_dir = tmp_path / "appdir"
+    static_dir = app_dir / "static"
+    static_dir.mkdir(parents=True)
+    (static_dir / "index.html").write_text("<h1>Hello UI</h1>", encoding="utf-8")
+    monkeypatch.setattr(app_module, "__file__", str(app_dir / "app.py"))
+
+    client = TestClient(app_module.app)
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "Hello UI" in response.text
+
+
+def test_ui_returns_404_when_missing(monkeypatch, tmp_path):
+    app_dir = tmp_path / "appdir"
+    app_dir.mkdir()
+    monkeypatch.setattr(app_module, "__file__", str(app_dir / "app.py"))
+
+    client = TestClient(app_module.app)
+    response = client.get("/")
+
+    assert response.status_code == 404
+    assert "UI not found" in response.text
+
+
+def test_health_endpoint_reports_prompt_status():
+    client = TestClient(app_module.app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["prompt_loaded"] == app_module.PROMPT_PATH.exists()

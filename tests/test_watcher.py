@@ -1,5 +1,8 @@
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "ci" / "fixtures" / "valid_output.json"
 VALID_OUTPUT = FIXTURE_PATH.read_text(encoding="utf-8")
@@ -83,3 +86,80 @@ def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
     assert "runner stderr" in log_text
     assert "=== validation ===" in log_text
     assert "INVALID: $ keys mismatch" in log_text
+
+
+def test_process_transcript_handles_subprocess_failure(tmp_path, caplog):
+    from watcher import process_transcript
+
+    txt = tmp_path / "meeting.txt"
+    txt.write_text("transcript content")
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    script = tmp_path / "run_master_dev.sh"
+    script.write_text("#!/bin/bash\necho '{}'")
+    script.chmod(0o755)
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="boom\n")
+        process_transcript(txt, outputs_dir, script)
+
+    assert not (outputs_dir / "meeting.json").exists()
+    assert not (outputs_dir / "meeting.tmp.json").exists()
+    log_contents = (outputs_dir / "meeting.log").read_text()
+    assert "boom" in log_contents
+    assert "meeting.log" in caplog.text
+
+
+def test_on_created_ignores_directories(monkeypatch, tmp_path):
+    from watcher import TranscriptHandler
+
+    handler = TranscriptHandler(outputs_dir=tmp_path)
+    called = False
+
+    def _spy(*args, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr("watcher.process_transcript", _spy)
+
+    event = MagicMock(is_directory=True, src_path=str(tmp_path / "new_dir"))
+    handler.on_created(event)
+
+    assert called is False
+
+
+def test_on_created_skips_already_processed(monkeypatch, tmp_path):
+    from watcher import TranscriptHandler
+
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    (outputs_dir / "meeting.json").write_text("done")
+
+    handler = TranscriptHandler(outputs_dir=outputs_dir)
+    called = False
+
+    def _spy(*args, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr("watcher.process_transcript", _spy)
+
+    event = MagicMock(is_directory=False, src_path=str(tmp_path / "meeting.txt"))
+    handler.on_created(event)
+
+    assert called is False
+
+
+def test_main_exits_when_transcripts_missing(monkeypatch, tmp_path):
+    import watcher
+
+    missing_dir = tmp_path / "nope"
+    monkeypatch.setattr(
+        "watcher.argparse.ArgumentParser.parse_args",
+        lambda self: SimpleNamespace(transcripts=str(missing_dir), outputs=str(tmp_path / "outputs")),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        watcher.main()
+
+    assert exc_info.value.code == 1
