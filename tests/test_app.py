@@ -278,3 +278,59 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+# ── _prepare_claude_call ──────────────────────────────────────────────────────
+
+def test_prepare_claude_call_raises_500_when_api_key_missing(monkeypatch):
+    from app import _prepare_claude_call
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _prepare_claude_call("some transcript")
+
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY" in exc_info.value.detail
+
+
+# ── /health endpoint ──────────────────────────────────────────────────────────
+
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "prompt_loaded" in data
+
+
+# ── / (UI) endpoint ───────────────────────────────────────────────────────────
+
+def test_ui_endpoint_returns_html_when_file_exists(monkeypatch, tmp_path):
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    html_file = static_dir / "index.html"
+    html_file.write_text("<h1>Hello</h1>", encoding="utf-8")
+    monkeypatch.setattr(app_module, "__file__", str(tmp_path / "app.py"))
+    client = TestClient(app_module.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "<h1>Hello</h1>" in response.text
+
+
+def test_ui_endpoint_returns_404_when_file_missing(monkeypatch, tmp_path):
+    # Point __file__ at a directory that has no static/index.html
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    monkeypatch.setattr(app_module, "__file__", str(empty / "app.py"))
+    client = TestClient(app_module.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 404
+    assert "UI not found" in response.text
