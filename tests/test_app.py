@@ -278,3 +278,35 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+# ── Additional unit tests ─────────────────────────────────────────────────────
+
+
+def test_verify_api_key_allows_when_unset(monkeypatch):
+    from app import verify_api_key
+
+    monkeypatch.delenv("SERVER_API_KEY", raising=False)
+    verify_api_key()  # should not raise
+
+
+def test_verify_api_key_rejects_wrong_key(monkeypatch):
+    from app import verify_api_key
+
+    monkeypatch.setenv("SERVER_API_KEY", "secret")
+
+    with pytest.raises(HTTPException) as exc_info:
+        verify_api_key("wrong")
+
+    assert exc_info.value.status_code == 401
+
+
+def test_prepare_claude_call_requires_api_key(monkeypatch):
+    from app import _prepare_claude_call
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _prepare_claude_call("hello")
+
+    assert exc_info.value.status_code == 500
