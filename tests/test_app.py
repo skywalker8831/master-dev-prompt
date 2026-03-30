@@ -278,3 +278,37 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+def test_prepare_claude_call_requires_api_key(monkeypatch):
+    from app import _prepare_claude_call
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _prepare_claude_call("hello")
+
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY not set" in exc_info.value.detail
+
+
+def test_prepare_claude_call_builds_expected_messages(monkeypatch):
+    from app import _prepare_claude_call
+
+    calls = {}
+
+    class FakeClient:
+        def __init__(self, api_key):
+            calls["api_key"] = api_key
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "secret-key")
+    monkeypatch.setattr(app_module, "anthropic", SimpleNamespace(Anthropic=FakeClient))
+    monkeypatch.setattr(app_module, "load_system_prompt", lambda: "SYSTEM")
+    monkeypatch.setattr(app_module, "build_user_message", lambda t: f"USER:{t}")
+
+    client, system, user_message = _prepare_claude_call("hi there")
+
+    assert isinstance(client, FakeClient)
+    assert calls["api_key"] == "secret-key"
+    assert system == "SYSTEM"
+    assert user_message == "USER:hi there"

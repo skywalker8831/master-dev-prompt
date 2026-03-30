@@ -83,3 +83,56 @@ def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
     assert "runner stderr" in log_text
     assert "=== validation ===" in log_text
     assert "INVALID: $ keys mismatch" in log_text
+
+
+def test_process_transcript_logs_and_returns_on_failure(tmp_path):
+    from watcher import process_transcript
+
+    txt = tmp_path / "meeting.txt"
+    txt.write_text("transcript content")
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    script = tmp_path / "run_master_dev.sh"
+    script.write_text("#!/bin/bash\necho 'should not run'")
+    script.chmod(0o755)
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=1, stdout="ignored", stderr="boom\n")
+
+        process_transcript(txt, outputs_dir, script)
+
+    assert not (outputs_dir / "meeting.json").exists()
+    assert not (outputs_dir / "meeting.tmp.json").exists()
+    assert not (outputs_dir / "meeting.invalid.json").exists()
+    log_text = (outputs_dir / "meeting.log").read_text()
+    assert "boom" in log_text
+
+
+def test_transcript_handler_ignores_directories(monkeypatch, tmp_path):
+    from watcher import TranscriptHandler
+
+    handler = TranscriptHandler(outputs_dir=tmp_path)
+    mock_process = MagicMock()
+    monkeypatch.setattr("watcher.process_transcript", mock_process)
+
+    handler.on_created(MagicMock(is_directory=True, src_path=str(tmp_path / "new.txt")))
+
+    mock_process.assert_not_called()
+
+
+def test_transcript_handler_processes_new_txt(monkeypatch, tmp_path):
+    from watcher import TranscriptHandler
+
+    outputs_dir = tmp_path / "outputs"
+    outputs_dir.mkdir()
+    script = tmp_path / "run_master_dev.sh"
+    handler = TranscriptHandler(outputs_dir=outputs_dir, script=script)
+    mock_process = MagicMock()
+    monkeypatch.setattr("watcher.process_transcript", mock_process)
+
+    txt = tmp_path / "meeting.txt"
+    txt.write_text("hello")
+
+    handler.on_created(MagicMock(is_directory=False, src_path=str(txt)))
+
+    mock_process.assert_called_once_with(txt, outputs_dir, script)
