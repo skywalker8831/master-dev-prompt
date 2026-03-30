@@ -237,6 +237,7 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
 
     authorized_response = client.post("/process", json=payload, headers={"X-Api-Key": "secret"})
     assert authorized_response.status_code == 200
+    assert authorized_response.json()["result"]["design_doc"]["context_problem"] == VALID_RESULT["design_doc"]["context_problem"]
 
 
 def test_stream_endpoint_emits_done_for_schema_valid_output(monkeypatch):
@@ -303,8 +304,11 @@ def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
     assert wrong_key_response.status_code == 401
     assert wrong_key_response.json()["detail"] == "Unauthorized"
 
-    authorized_response = client.post("/process/stream", json=payload, headers={"X-Api-Key": "secret"})
+    with client.stream("POST", "/process/stream", json=payload, headers={"X-Api-Key": "secret"}) as authorized_response:
+        authorized_body = "".join(authorized_response.iter_text())
+
     assert authorized_response.status_code == 200
+    assert '"done": true' in authorized_body
 
 
 def test_stream_endpoint_rejects_invalid_repo_url(monkeypatch):

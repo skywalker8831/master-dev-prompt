@@ -93,7 +93,7 @@ def test_process_transcript_handles_runner_failure(tmp_path):
     outputs_dir = tmp_path / "outputs"
     outputs_dir.mkdir()
     script = tmp_path / "run_master_dev.sh"
-    # Script content is unused because subprocess.run is mocked.
+    # Script file created for path validation; subprocess.run is mocked to control execution.
     script.write_text("#!/bin/bash\nexit 1")
     script.chmod(0o755)
 
