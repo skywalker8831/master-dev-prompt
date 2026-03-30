@@ -1,5 +1,4 @@
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -96,8 +95,6 @@ def test_process_transcript_handles_subprocess_failure(tmp_path, caplog):
     outputs_dir = tmp_path / "outputs"
     outputs_dir.mkdir()
     script = tmp_path / "run_master_dev.sh"
-    script.write_text("#!/bin/bash\necho '{}'")
-    script.chmod(0o755)
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="boom\n")
@@ -152,6 +149,7 @@ def test_on_created_skips_already_processed(monkeypatch, tmp_path):
 
 def test_main_exits_when_transcripts_missing(monkeypatch, tmp_path):
     import watcher
+    from types import SimpleNamespace
 
     missing_dir = tmp_path / "nope"
     monkeypatch.setattr(

@@ -220,7 +220,7 @@ def test_process_endpoint_rejects_schema_invalid_output(monkeypatch):
     assert "$ keys mismatch" in response.json()["detail"]
 
 
-def test_process_endpoint_allows_open_access_when_no_server_key(monkeypatch):
+def test_process_endpoint_allows_access_when_server_key_not_configured(monkeypatch):
     monkeypatch.delenv("SERVER_API_KEY", raising=False)
     _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
     client = TestClient(app_module.app)
@@ -305,7 +305,6 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
 
 def test_prepare_claude_call_requires_api_key(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.setattr(app_module, "_system_prompt", None, raising=False)
 
     with pytest.raises(HTTPException) as exc_info:
         app_module._prepare_claude_call("hi")
