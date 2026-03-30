@@ -278,3 +278,67 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "secret")
+    chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
+    client = TestClient(app_module.app)
+
+    with client.stream("POST", "/process/stream", json={"transcript": "hello"}) as unauthorized:
+        pass
+    with client.stream("POST", "/process/stream", json={"transcript": "hello"}, headers={"X-Api-Key": "secret"}) as authorized:
+        authorized_body = "".join(authorized.iter_text())
+
+    assert unauthorized.status_code == 401
+    assert authorized.status_code == 200
+    assert '"done": true' in authorized_body
+
+
+# ── _prepare_claude_call ──────────────────────────────────────────────────────
+
+def test_process_endpoint_returns_500_when_api_key_missing(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app_module.app)
+
+    response = client.post("/process", json={"transcript": "hello"})
+
+    assert response.status_code == 500
+    assert "ANTHROPIC_API_KEY" in response.json()["detail"]
+
+
+# ── UI and health endpoints ───────────────────────────────────────────────────
+
+def test_ui_endpoint_returns_html():
+    client = TestClient(app_module.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+
+
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "prompt_loaded" in data
+
+
+def test_prepare_claude_call_returns_client_system_and_user_message(monkeypatch):
+    from unittest.mock import MagicMock
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    mock_client = MagicMock()
+    monkeypatch.setattr("anthropic.Anthropic", lambda api_key: mock_client)
+
+    client, system, user_msg = app_module._prepare_claude_call("my transcript")
+
+    assert client is mock_client
+    assert isinstance(system, str) and len(system) > 0
+    assert user_msg == 'my transcript\n"""'
