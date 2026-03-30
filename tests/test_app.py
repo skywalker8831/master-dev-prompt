@@ -278,3 +278,77 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+# ── _prepare_claude_call ──────────────────────────────────────────────────────
+
+def test_prepare_claude_call_raises_when_no_api_key(monkeypatch):
+    from app import _prepare_claude_call
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _prepare_claude_call("some transcript")
+
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY" in exc_info.value.detail
+
+
+def test_prepare_claude_call_returns_client_system_and_message(monkeypatch):
+    import anthropic
+    from app import _prepare_claude_call
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-123")
+    fake_client = object()
+    monkeypatch.setattr(anthropic, "Anthropic", lambda api_key: fake_client)
+
+    client, system, user_message = _prepare_claude_call("my transcript")
+
+    assert client is fake_client
+    assert isinstance(system, str) and len(system) > 0
+    assert user_message == 'my transcript\n"""'
+
+
+# ── Health and UI endpoints ───────────────────────────────────────────────────
+
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "prompt_loaded" in data
+
+
+def test_ui_endpoint_returns_html_when_file_exists(monkeypatch):
+    from pathlib import Path
+
+    monkeypatch.setattr(Path, "exists", lambda self: True)
+    monkeypatch.setattr(Path, "read_text", lambda self, **kwargs: "<h1>Hello UI</h1>")
+    client = TestClient(app_module.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+
+
+def test_ui_endpoint_returns_404_when_file_missing(monkeypatch, tmp_path):
+    from pathlib import Path
+    import app as app_module2
+
+    original_exists = Path.exists
+
+    def patched_exists(self):
+        if self.name == "index.html":
+            return False
+        return original_exists(self)
+
+    monkeypatch.setattr(Path, "exists", patched_exists)
+    client = TestClient(app_module2.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 404
