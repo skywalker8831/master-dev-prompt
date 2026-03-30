@@ -278,3 +278,72 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+# ── /health endpoint ──────────────────────────────────────────────────────────
+
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+    assert "prompt_loaded" in response.json()
+
+
+def test_health_endpoint_prompt_loaded_reflects_file_presence():
+    client = TestClient(app_module.app)
+    response = client.get("/health")
+    assert response.json()["prompt_loaded"] is True
+
+
+# ── / (UI) endpoint ───────────────────────────────────────────────────────────
+
+def test_ui_endpoint_returns_html():
+    client = TestClient(app_module.app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+
+
+# ── _prepare_claude_call: missing API key ─────────────────────────────────────
+
+def test_process_endpoint_returns_500_when_api_key_not_set(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app_module.app)
+    response = client.post("/process", json={"transcript": "hello"})
+    assert response.status_code == 500
+    assert "ANTHROPIC_API_KEY" in response.json()["detail"]
+
+
+def test_stream_endpoint_returns_500_when_api_key_not_set(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app_module.app)
+    response = client.post("/process/stream", json={"transcript": "hello"})
+    assert response.status_code == 500
+    assert "ANTHROPIC_API_KEY" in response.json()["detail"]
+
+
+# ── stream endpoint: auth ─────────────────────────────────────────────────────
+
+def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "streamkey")
+    client = TestClient(app_module.app)
+    response = client.post("/process/stream", json={"transcript": "hello"})
+    assert response.status_code == 401
+
+
+# ── stream endpoint: URL validation ──────────────────────────────────────────
+
+def test_stream_endpoint_rejects_list_url(monkeypatch):
+    chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
+    client = TestClient(app_module.app)
+
+    with client.stream(
+        "POST",
+        "/process/stream",
+        json={"transcript": "hello", "repo_url": "https://github.com/user?tab=repositories"},
+    ) as response:
+        pass
+
+    assert response.status_code == 422
