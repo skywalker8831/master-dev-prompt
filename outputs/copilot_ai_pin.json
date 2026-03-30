@@ -1,0 +1,176 @@
+{
+  "design_doc": {
+    "context_problem": "Build the Copilot AI PIN — a wearable AI assistant that clips onto clothing, captures ambient audio/video via a Raspberry Pi Zero 2 W module, runs on-device wake-word detection, and offloads all heavy inference to a companion iPhone app over Bluetooth LE. Smart glasses (Ray-Ban Meta or generic BLE) provide an optional overlay display and camera input for visual question answering.",
+    "requirements_constraints": "On-device: wake-word detection (Porcupine) must run offline on Pi Zero. BLE audio streaming must stay under 200 ms latency; Opus codec may be required. iPhone app must handle BLE GATT, Whisper transcription, GPT-4o/4V queries, and iCloud sync. Smart glasses SDK is early-access and may break. Battery life target is 4 hours on Pi Zero. Apple MFi/BLE accessory guidelines constrain certain GATT profiles. API keys for OpenAI must be managed securely by the backend relay.",
+    "proposed_architecture": "Three-tier system: (1) PIN hardware (Pi Zero 2 W) — captures audio/video, runs Porcupine wake-word, streams audio chunks over BLE GATT to iPhone. (2) iPhone companion app (Swift/SwiftUI) — CoreBluetooth GATT client, sends audio to Whisper API, queries GPT-4o, pushes text response back over BLE; syncs to iCloud via Core Data. (3) Backend relay (FastAPI/Python, Priya) — manages API keys and acts as proxy to OpenAI to avoid key exposure on device. Glasses integration is an optional BLE sidecar on the iPhone app.",
+    "alternatives": "Alternative LLM path: run a local llama.cpp model on-device for offline fallback, though Pi Zero compute is likely insufficient. Alternative display: small e-ink screen on the PIN instead of glasses overlay. Alternative speech: on-device Whisper Tiny for lower latency but reduced accuracy. Alternative wake-word: custom TensorFlow Lite model instead of Porcupine to avoid licensing costs.",
+    "decisions": "BLE stack: CoreBluetooth on iOS, BlueZ on Pi. Wake-word: Porcupine (on Pi, no cloud). STT: OpenAI Whisper API (iPhone side). LLM: GPT-4o for Q&A, GPT-4V when image attached. TTS: iOS AVSpeechSynthesizer for earpiece, future HW speaker. Local storage: Core Data + iCloud sync. API key management delegated to FastAPI backend relay.",
+    "open_questions_risks": "1. Do we need a local fallback LLM (llama.cpp) for offline use? 2. E-ink display on PIN vs. glasses-only for text output. 3. Privacy and data-retention policy for audio clips stored in iCloud. 4. BLE audio latency — Opus codec adoption timeline. 5. Porcupine free-tier keyword limit (one custom keyword); paid GA license budget. 6. Smart glasses SDK stability between firmware updates."
+  },
+  "pm_summary": {
+    "overview": "Three-month MVP sprint to ship a wearable AI PIN that offloads intelligence to a paired iPhone. Month 1 delivers the PIN hardware prototype and BLE audio link. Month 2 completes the iPhone companion app and smart glasses passthrough. Month 3 focuses on polish, power optimization, and a TestFlight beta.",
+    "scope": "Hardware schematic and Pi firmware (Maya), iOS companion app with BLE, Whisper, GPT-4o/4V, and iCloud (Carlos), backend relay for API key management (Priya), smart glasses BLE integration, and full team integration testing by end of Month 2.",
+    "implications_for_timeline": "BLE audio latency risk could push codec work into Month 2, compressing glasses integration. Porcupine licensing must be resolved before GA release. Smart glasses SDK instability may require a feature flag or graceful degradation path. Power validation on the Pi Zero could extend Month 3 if the 4-hour target is not met."
+  },
+  "actions": {
+    "items": [
+      {
+        "description": "Finalize Pi Zero 2 W hardware schematic and order first prototype batch",
+        "owner": "Maya",
+        "priority": "high",
+        "type": "feature"
+      },
+      {
+        "description": "Implement BLE GATT audio streaming on Pi (BlueZ) and iPhone (CoreBluetooth)",
+        "owner": "Maya / Carlos",
+        "priority": "high",
+        "type": "feature"
+      },
+      {
+        "description": "Evaluate Opus codec for BLE audio to meet <200 ms latency budget",
+        "owner": "Maya",
+        "priority": "high",
+        "type": "research"
+      },
+      {
+        "description": "Build iOS companion app: BLE client, Whisper API, GPT-4o/4V pipeline, TTS",
+        "owner": "Carlos",
+        "priority": "high",
+        "type": "feature"
+      },
+      {
+        "description": "Implement Core Data + iCloud sync for session history",
+        "owner": "Carlos",
+        "priority": "medium",
+        "type": "feature"
+      },
+      {
+        "description": "Build FastAPI backend relay for secure API key management",
+        "owner": "Priya",
+        "priority": "high",
+        "type": "infra"
+      },
+      {
+        "description": "Integrate smart glasses BLE SDK for response overlay and photo-capture trigger",
+        "owner": "Carlos",
+        "priority": "medium",
+        "type": "feature"
+      },
+      {
+        "description": "Define and document iCloud audio data-retention and privacy policy",
+        "owner": "Priya",
+        "priority": "medium",
+        "type": "decision"
+      },
+      {
+        "description": "Obtain Porcupine paid license for GA custom wake-word support",
+        "owner": "Priya",
+        "priority": "medium",
+        "type": "infra"
+      },
+      {
+        "description": "Conduct full team integration testing across PIN, iPhone, and glasses by end of Month 2",
+        "owner": "Entire team",
+        "priority": "high",
+        "type": "follow-up"
+      }
+    ]
+  },
+  "implementation_plan": {
+    "overview": "Deliver a wearable AI PIN MVP in three months. Month 1 establishes the hardware and BLE link. Month 2 completes the software stack end-to-end. Month 3 stabilizes, optimizes power, and ships a TestFlight beta.",
+    "milestones": [
+      {
+        "name": "Month 1 — Hardware Prototype & BLE Link",
+        "description": "Finalize PIN hardware schematic (Maya), assemble Pi Zero 2 W prototype with mic/camera module, implement Porcupine wake-word on Pi, and establish BLE GATT audio streaming between PIN and iPhone.",
+        "eta_guess": "End of Month 1 (~4 weeks)",
+        "risks": "Pi Zero compute may struggle with Porcupine; BLE audio latency may exceed 200 ms and require Opus codec work ahead of schedule."
+      },
+      {
+        "name": "Month 2 — iPhone App Feature-Complete & Glasses Passthrough",
+        "description": "Carlos delivers full iOS app: CoreBluetooth GATT client, Whisper transcription, GPT-4o/4V integration, AVSpeechSynthesizer TTS, Core Data + iCloud sync. Glasses BLE integration (overlay + photo capture). Priya ships the FastAPI backend relay. Full team integration test.",
+        "eta_guess": "End of Month 2 (~8 weeks)",
+        "risks": "Smart glasses SDK instability may delay overlay feature. API key rotation and MFi compliance review could block App Store submission preparation."
+      },
+      {
+        "name": "Month 3 — Polish, Power Optimization & TestFlight Beta",
+        "description": "Power profiling and optimization on Pi Zero to hit 4-hour battery target. UX polish pass on iOS app. Address offline fallback LLM question. Privacy/data-retention policy finalized. TestFlight beta distributed.",
+        "eta_guess": "End of Month 3 (~12 weeks)",
+        "risks": "Battery life may require hardware redesign (larger cell or duty-cycle changes). App Store review for BLE accessory apps can take 1–2 extra weeks."
+      }
+    ],
+    "tech_tasks": [
+      {
+        "area": "infra",
+        "description": "Pi Zero 2 W firmware: Porcupine wake-word integration, BLE GATT audio server (BlueZ), audio capture pipeline",
+        "depends_on": [],
+        "complexity": "L"
+      },
+      {
+        "area": "frontend",
+        "description": "iOS CoreBluetooth GATT client: connect to PIN, receive audio chunks, send responses back",
+        "depends_on": ["Pi Zero 2 W firmware BLE GATT server"],
+        "complexity": "L"
+      },
+      {
+        "area": "backend",
+        "description": "FastAPI relay service: receive transcription requests from iOS, proxy to OpenAI Whisper and GPT-4o/4V, return results; manage API keys securely",
+        "depends_on": [],
+        "complexity": "M"
+      },
+      {
+        "area": "frontend",
+        "description": "iOS Whisper + GPT-4o/4V pipeline: send audio to Whisper API, send query + optional image to GPT, handle streaming responses",
+        "depends_on": ["FastAPI relay service"],
+        "complexity": "M"
+      },
+      {
+        "area": "frontend",
+        "description": "iOS Core Data + iCloud sync: model sessions, audio metadata; sync across devices",
+        "depends_on": [],
+        "complexity": "M"
+      },
+      {
+        "area": "frontend",
+        "description": "Smart glasses BLE integration: overlay text responses, trigger photo capture on 'capture' keyword, pipe image to GPT-4V",
+        "depends_on": ["iOS Whisper + GPT-4o/4V pipeline"],
+        "complexity": "M"
+      },
+      {
+        "area": "infra",
+        "description": "Opus codec evaluation and integration for BLE audio streaming to reduce latency below 200 ms",
+        "depends_on": ["Pi Zero 2 W firmware BLE GATT server"],
+        "complexity": "S"
+      },
+      {
+        "area": "testing",
+        "description": "End-to-end integration test suite: PIN → BLE → iPhone → relay → OpenAI → response round-trip; latency benchmarks",
+        "depends_on": ["iOS CoreBluetooth GATT client", "FastAPI relay service"],
+        "complexity": "M"
+      }
+    ]
+  },
+  "code_suggestions": {
+    "language": "Swift / Python",
+    "stack_context": "iOS companion app (Swift/SwiftUI + CoreBluetooth + AVFoundation), Pi firmware (Python + BlueZ), FastAPI backend relay (Python + httpx), OpenAI Whisper and GPT-4o APIs",
+    "snippets": [
+      {
+        "title": "iOS BLE GATT audio receive handler (Swift)",
+        "purpose": "Accumulate raw PCM audio chunks arriving over BLE GATT notifications from the PIN and pass them to the Whisper transcription pipeline once silence is detected.",
+        "code": "import CoreBluetooth\nimport AVFoundation\n\nfinal class PINBLEManager: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {\n    private var audioBuffer = Data()\n    private let audioServiceUUID = CBUUID(string: \"0000FFE0-0000-1000-8000-00805F9B34FB\")\n    private let audioCharUUID  = CBUUID(string: \"0000FFE1-0000-1000-8000-00805F9B34FB\")\n\n    func peripheral(_ peripheral: CBPeripheral,\n                    didUpdateValueFor characteristic: CBCharacteristic,\n                    error: Error?) {\n        guard error == nil, let data = characteristic.value else { return }\n        audioBuffer.append(data)\n        // Silence detector placeholder — flush to Whisper when buffer exceeds threshold\n        if audioBuffer.count >= 32_000 * 2 { // ~1 s of 16-kHz 16-bit mono\n            Task { await transcribe(pcm: audioBuffer) }\n            audioBuffer.removeAll(keepingCapacity: true)\n        }\n    }\n\n    private func transcribe(pcm: Data) async {\n        // POST raw PCM wrapped in a WAV envelope to the FastAPI relay /transcribe endpoint\n        guard let url = URL(string: \"https://relay.example.com/transcribe\") else { return }\n        var request = URLRequest(url: url)\n        request.httpMethod = \"POST\"\n        request.setValue(\"audio/wav\", forHTTPHeaderField: \"Content-Type\")\n        request.httpBody = wrapPCMAsWAV(pcm, sampleRate: 16_000)\n        let (data, _) = try! await URLSession.shared.data(for: request)\n        let result = try! JSONDecoder().decode(TranscriptionResult.self, from: data)\n        await sendToGPT(text: result.text)\n    }\n}",
+        "notes": "Replace the silence detector with a proper VAD (e.g., WebRTC VAD via a Swift bridge) before production. The GATT service/characteristic UUIDs must match those registered in the Pi firmware."
+      },
+      {
+        "title": "FastAPI relay: Whisper + GPT-4o proxy (Python)",
+        "purpose": "Receive raw audio from the iOS app, forward to OpenAI Whisper for transcription, then query GPT-4o and return the text response — keeping the OpenAI API key server-side.",
+        "code": "import os\nfrom fastapi import FastAPI, UploadFile, HTTPException\nfrom openai import AsyncOpenAI\n\napp = FastAPI()\nclient = AsyncOpenAI(api_key=os.environ[\"OPENAI_API_KEY\"])\n\n@app.post(\"/transcribe\")\nasync def transcribe(audio: UploadFile) -> dict:\n    audio_bytes = await audio.read()\n    transcription = await client.audio.transcriptions.create(\n        model=\"whisper-1\",\n        file=(audio.filename or \"audio.wav\", audio_bytes, \"audio/wav\"),\n    )\n    return {\"text\": transcription.text}\n\n@app.post(\"/query\")\nasync def query(body: dict) -> dict:\n    text: str = body.get(\"text\", \"\")\n    image_url: str | None = body.get(\"image_url\")\n    if not text:\n        raise HTTPException(status_code=422, detail=\"text is required\")\n    messages: list = [{\"role\": \"user\", \"content\": []}]\n    messages[0][\"content\"].append({\"type\": \"text\", \"text\": text})\n    if image_url:\n        messages[0][\"content\"].append({\"type\": \"image_url\", \"image_url\": {\"url\": image_url}})\n    model = \"gpt-4o\" if not image_url else \"gpt-4-vision-preview\"\n    response = await client.chat.completions.create(model=model, messages=messages, max_tokens=512)\n    return {\"answer\": response.choices[0].message.content}",
+        "notes": "Deploy behind HTTPS with a server-side secret (e.g., `SERVER_API_KEY` pattern from this repo). Rate-limit the /transcribe endpoint per device ID to control OpenAI spend."
+      },
+      {
+        "title": "Pi Zero 2 W wake-word + BLE audio streamer (Python)",
+        "purpose": "Run Porcupine wake-word detection on the Pi Zero, capture audio on detection, and stream raw PCM chunks to the paired iPhone via BlueZ GATT.",
+        "code": "import pvporcupine\nimport pyaudio\nimport dbus\n\nACCESS_KEY = \"<PORCUPINE_ACCESS_KEY>\"\nKEYWORD = \"hey copilot\"\nSAMPLE_RATE = 16_000\nFRAME_LENGTH = 512  # Porcupine frame length\n\nporcupine = pvporcupine.create(access_key=ACCESS_KEY, keywords=[KEYWORD])\npa = pyaudio.PyAudio()\nstream = pa.open(\n    rate=SAMPLE_RATE,\n    channels=1,\n    format=pyaudio.paInt16,\n    input=True,\n    frames_per_buffer=FRAME_LENGTH,\n)\n\nprint(\"Listening for wake word...\")\nwhile True:\n    pcm = stream.read(FRAME_LENGTH, exception_on_overflow=False)\n    pcm_array = list(int.from_bytes(pcm[i:i+2], 'little', signed=True) for i in range(0, len(pcm), 2))\n    result = porcupine.process(pcm_array)\n    if result >= 0:\n        print(\"Wake word detected — streaming audio to iPhone\")\n        # TODO: notify BlueZ GATT characteristic to begin streaming audio chunks\n        # gatt_char.WriteValue(pcm, {})",
+        "notes": "Replace the dbus stub with a full BlueZ GATT server using the bluezdbus Python library. Evaluate Opus encoding (opuslib) to compress chunks before transmission and reduce BLE payload size."
+      }
+    ]
+  }
+}
