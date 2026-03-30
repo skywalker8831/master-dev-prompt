@@ -7,7 +7,8 @@ import pytest
 import validate_output as cli
 
 
-FIXTURE_PATH = Path(__file__).resolve().parents[1] / "ci" / "fixtures" / "valid_output.json"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+FIXTURE_PATH = PROJECT_ROOT / "ci" / "fixtures" / "valid_output.json"
 
 
 def test_main_requires_argument(capsys, monkeypatch):
