@@ -278,3 +278,93 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+# ── Health + UI endpoints ─────────────────────────────────────────────────────
+
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+    assert "prompt_loaded" in response.json()
+
+
+def test_ui_endpoint_returns_html():
+    client = TestClient(app_module.app)
+    response = client.get("/")
+    # Either the UI file exists (200) or it is absent (404); either way no 5xx
+    assert response.status_code in (200, 404)
+    assert "text/html" in response.headers["content-type"]
+
+
+# ── _prepare_claude_call: missing API key ─────────────────────────────────────
+
+def test_prepare_claude_call_raises_when_no_api_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    from app import _prepare_claude_call
+
+    with pytest.raises(HTTPException) as exc_info:
+        _prepare_claude_call("some transcript")
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY" in exc_info.value.detail
+
+
+# ── /process/stream auth enforcement ─────────────────────────────────────────
+
+def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "streamsecret")
+    chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
+    client = TestClient(app_module.app)
+
+    with client.stream("POST", "/process/stream", json={"transcript": "hello"}) as unauthorized:
+        pass
+    with client.stream(
+        "POST",
+        "/process/stream",
+        json={"transcript": "hello"},
+        headers={"X-Api-Key": "streamsecret"},
+    ) as authorized:
+        authorized_body = "".join(authorized.iter_text())
+
+    assert unauthorized.status_code == 401
+    assert authorized.status_code == 200
+    assert '"done": true' in authorized_body
+
+
+# ── /process/stream: invalid repo_url ────────────────────────────────────────
+
+def test_stream_endpoint_rejects_invalid_repo_url(monkeypatch):
+    chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
+    client = TestClient(app_module.app)
+
+    response = client.post(
+        "/process/stream",
+        json={"transcript": "hello", "repo_url": "https://gitlab.com/user/repo"},
+    )
+
+    assert response.status_code == 422
+    assert "Invalid GitHub repository URL" in response.json()["detail"]
+
+
+# ── verify_api_key: open access when no key configured ───────────────────────
+
+def test_verify_api_key_allows_any_request_when_no_key_configured(monkeypatch):
+    monkeypatch.delenv("SERVER_API_KEY", raising=False)
+    _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
+    client = TestClient(app_module.app)
+
+    response = client.post("/process", json={"transcript": "hello"})
+    assert response.status_code == 200
+
+
+# ── DeliveryConfig: invalid mode rejected by Pydantic ────────────────────────
+
+def test_delivery_config_rejects_invalid_mode():
+    from pydantic import ValidationError as PydanticValidationError
+    from app import DeliveryConfig
+
+    with pytest.raises(PydanticValidationError):
+        DeliveryConfig(mode="ftp", branch="main")
