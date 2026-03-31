@@ -48,7 +48,7 @@ def test_process_transcript_calls_script(tmp_path):
     outputs_dir = tmp_path / "outputs"
     outputs_dir.mkdir()
     script = tmp_path / "run_master_dev.sh"
-    script.write_text("#!/bin/bash\necho '{}'")
+    script.write_text("#!/bin/bash\necho '{}'\n")
     script.chmod(0o755)
 
     with patch("subprocess.run") as mock_run:
@@ -68,7 +68,7 @@ def test_process_transcript_writes_invalid_output_on_schema_failure(tmp_path):
     outputs_dir = tmp_path / "outputs"
     outputs_dir.mkdir()
     script = tmp_path / "run_master_dev.sh"
-    script.write_text("#!/bin/bash\necho '{}'")
+    script.write_text("#!/bin/bash\necho '{}'\n")
     script.chmod(0o755)
 
     with patch("subprocess.run") as mock_run:
@@ -93,7 +93,7 @@ def test_process_transcript_handles_runner_failure(tmp_path):
     outputs_dir = tmp_path / "outputs"
     outputs_dir.mkdir()
     script = tmp_path / "run_master_dev.sh"
-    script.write_text("#!/bin/bash\necho '{}'")
+    script.write_text("#!/bin/bash\necho '{}'\n")
     script.chmod(0o755)
 
     with patch("subprocess.run") as mock_run:

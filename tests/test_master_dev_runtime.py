@@ -65,7 +65,14 @@ def test_validate_output_data_requires_non_empty_lists():
 def test_validate_output_data_rejects_invalid_enum_values():
     data = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
     data["actions"]["items"][0]["priority"] = "urgent"
-    data["implementation_plan"]["tech_tasks"][0]["complexity"] = "XL"
 
     with pytest.raises(ValidationError, match=r"\.priority must be one of \['high', 'low', 'medium'\]"):
+        validate_output_data(data)
+
+
+def test_validate_output_data_rejects_invalid_complexity():
+    data = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+    data["implementation_plan"]["tech_tasks"][0]["complexity"] = "XL"
+
+    with pytest.raises(ValidationError, match=r"\.complexity must be one of \['L', 'M', 'S'\]"):
         validate_output_data(data)
