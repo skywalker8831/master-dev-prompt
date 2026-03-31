@@ -232,6 +232,22 @@ def test_process_endpoint_requires_api_key_when_configured(monkeypatch):
     assert authorized.status_code == 200
 
 
+def test_verify_api_key_rejects_wrong_key(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "correct-key")
+    with pytest.raises(HTTPException) as exc_info:
+        app_module.verify_api_key("wrong-key")
+    assert exc_info.value.status_code == 401
+
+
+def test_prepare_claude_call_requires_api_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        app_module._prepare_claude_call("transcript")
+
+    assert exc_info.value.status_code == 500
+
+
 def test_stream_endpoint_emits_done_for_schema_valid_output(monkeypatch):
     chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
     _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
