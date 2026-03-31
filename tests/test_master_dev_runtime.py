@@ -42,8 +42,8 @@ def test_validate_output_file_rejects_schema_invalid_json(tmp_path):
         validate_output_file(invalid_path)
 
 
-def test_validate_output_file_missing_file():
-    missing = Path("/tmp/definitely-missing.json")
+def test_validate_output_file_missing_file(tmp_path):
+    missing = tmp_path / "definitely-missing.json"
 
     with pytest.raises(ValidationError, match="file not found"):
         validate_output_file(missing)
