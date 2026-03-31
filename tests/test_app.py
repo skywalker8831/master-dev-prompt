@@ -278,3 +278,70 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+# ── _prepare_claude_call unit tests ──────────────────────────────────────────
+
+def test_prepare_claude_call_raises_500_without_api_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    from app import _prepare_claude_call
+
+    with pytest.raises(HTTPException) as exc_info:
+        _prepare_claude_call("my transcript")
+
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY not set" in exc_info.value.detail
+
+
+def test_prepare_claude_call_returns_client_and_messages(monkeypatch):
+    from unittest.mock import MagicMock, patch
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-abc")
+
+    from app import _prepare_claude_call
+
+    with patch("anthropic.Anthropic") as mock_anthropic_cls:
+        mock_client = MagicMock()
+        mock_anthropic_cls.return_value = mock_client
+
+        client, system, user_message = _prepare_claude_call("hello transcript")
+
+    mock_anthropic_cls.assert_called_once_with(api_key="test-key-abc")
+    assert client is mock_client
+    assert isinstance(system, str)
+    assert "hello transcript" in user_message
+
+
+# ── UI and health endpoint tests ─────────────────────────────────────────────
+
+def test_ui_endpoint_returns_html_page():
+    client = TestClient(app_module.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+
+
+def test_ui_endpoint_returns_404_when_static_html_missing(monkeypatch):
+    import pathlib
+
+    monkeypatch.setattr(pathlib.Path, "exists", lambda self: False)
+    client = TestClient(app_module.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 404
+    assert "UI not found" in response.text
+
+
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "prompt_loaded" in data
