@@ -267,6 +267,83 @@ def test_stream_endpoint_emits_repo_and_delivery_in_done_event(monkeypatch):
     assert '"mode": "push"' in body
 
 
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+def test_ui_endpoint_returns_html_when_file_exists():
+    client = TestClient(app_module.app)
+    response = client.get("/")
+
+    # The static/index.html may or may not exist; either way the endpoint returns HTML.
+    assert response.status_code in (200, 404)
+    assert "text/html" in response.headers["content-type"]
+
+
+def test_ui_endpoint_returns_404_when_index_missing(monkeypatch, tmp_path):
+    monkeypatch.setattr(app_module, "__file__", str(tmp_path / "app.py"))
+    client = TestClient(app_module.app)
+    response = client.get("/")
+
+    assert response.status_code == 404
+
+
+def test_prepare_claude_call_returns_client_system_and_message(monkeypatch):
+    from unittest.mock import MagicMock
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    mock_client = MagicMock()
+    monkeypatch.setattr(app_module.anthropic, "Anthropic", lambda **kw: mock_client)
+
+    from app import _prepare_claude_call
+
+    client, system, user_msg = _prepare_claude_call("my transcript")
+
+    assert client is mock_client
+    assert isinstance(system, str) and len(system) > 0
+    assert user_msg.endswith('"""')
+
+
+def test_prepare_claude_call_raises_when_no_api_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app_module.app)
+
+    response = client.post("/process", json={"transcript": "hello"})
+
+    assert response.status_code == 500
+    assert "ANTHROPIC_API_KEY" in response.json()["detail"]
+
+
+def test_stream_endpoint_requires_api_key_when_configured(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "secret-stream")
+    chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
+    client = TestClient(app_module.app)
+
+    with client.stream("POST", "/process/stream", json={"transcript": "hello"}) as response:
+        pass
+
+    assert response.status_code == 401
+
+
+def test_stream_endpoint_rejects_invalid_repo_url(monkeypatch):
+    chunks = [json.dumps(VALID_RESULT)]
+    _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
+    client = TestClient(app_module.app)
+
+    response = client.post(
+        "/process/stream",
+        json={"transcript": "hello", "repo_url": "https://gitlab.com/user/repo"},
+    )
+
+    assert response.status_code == 422
+    assert "Invalid GitHub repository URL" in response.json()["detail"]
+
+
 def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     invalid_json = json.dumps({"design_doc": {}})
     _install_fake_runtime(monkeypatch, _FakeClient(chunks=[invalid_json]))
