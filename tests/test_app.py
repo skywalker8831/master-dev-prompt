@@ -278,3 +278,86 @@ def test_stream_endpoint_emits_error_for_schema_invalid_output(monkeypatch):
     assert response.status_code == 200
     assert '"error":' in body
     assert "$ keys mismatch" in body or "$.design_doc keys mismatch" in body
+
+
+def test_process_endpoint_raises_when_api_key_missing(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app_module.app)
+
+    response = client.post("/process", json={"transcript": "hello"})
+
+    assert response.status_code == 500
+    assert "ANTHROPIC_API_KEY" in response.json()["detail"]
+
+
+def test_stream_endpoint_raises_when_api_key_missing(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app_module.app)
+
+    with client.stream("POST", "/process/stream", json={"transcript": "hello"}) as response:
+        body = "".join(response.iter_text())
+
+    assert response.status_code == 500
+    assert "ANTHROPIC_API_KEY" in body
+
+
+def test_prepare_claude_call_returns_client_system_and_message(monkeypatch):
+    from unittest.mock import MagicMock, patch
+    import app as app_mod
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-fake-key")
+    fake_client = MagicMock()
+    with patch("app.anthropic.Anthropic", return_value=fake_client):
+        client, system, user_msg = app_mod._prepare_claude_call("hello transcript")
+
+    assert client is fake_client
+    assert isinstance(system, str)
+    assert len(system) > 0
+    assert user_msg.endswith('"""')
+
+
+def test_verify_api_key_rejects_wrong_key(monkeypatch):
+    monkeypatch.setenv("SERVER_API_KEY", "correct-key")
+    _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
+    client = TestClient(app_module.app)
+
+    response = client.post("/process", json={"transcript": "hello"}, headers={"X-Api-Key": "wrong-key"})
+
+    assert response.status_code == 401
+
+
+def test_health_endpoint_returns_ok():
+    client = TestClient(app_module.app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "prompt_loaded" in data
+
+
+def test_ui_endpoint_returns_html_when_file_exists(tmp_path, monkeypatch):
+    html_content = "<html><body>Test UI</body></html>"
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text(html_content)
+
+    import app as app_mod
+    monkeypatch.setattr(app_mod, "__file__", str(tmp_path / "app.py"))
+    client = TestClient(app_mod.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "Test UI" in response.text
+
+
+def test_ui_endpoint_returns_404_when_file_missing(tmp_path, monkeypatch):
+    import app as app_mod
+    monkeypatch.setattr(app_mod, "__file__", str(tmp_path / "app.py"))
+    client = TestClient(app_mod.app)
+
+    response = client.get("/")
+
+    assert response.status_code == 404
