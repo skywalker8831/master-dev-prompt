@@ -51,29 +51,36 @@ def _install_fake_runtime(monkeypatch, fake_client):
     )
 
 
+def _allow_private_repo(monkeypatch):
+    monkeypatch.setattr(app_module, "_ensure_private_repo", lambda owner, repo: None)
+
+
 # ── URL validation unit tests ─────────────────────────────────────────────────
 
-def test_validate_repo_url_valid():
+def test_validate_repo_url_valid(monkeypatch):
     from app import _validate_repo_url
 
+    _allow_private_repo(monkeypatch)
     owner, repo, url = _validate_repo_url("https://github.com/skywalker8831/master-dev-prompt")
     assert owner == "skywalker8831"
     assert repo == "master-dev-prompt"
     assert url == "https://github.com/skywalker8831/master-dev-prompt"
 
 
-def test_validate_repo_url_valid_with_git_suffix():
+def test_validate_repo_url_valid_with_git_suffix(monkeypatch):
     from app import _validate_repo_url
 
+    _allow_private_repo(monkeypatch)
     owner, repo, url = _validate_repo_url("https://github.com/octocat/Hello-World.git")
     assert owner == "octocat"
     assert repo == "Hello-World"
     assert url == "https://github.com/octocat/Hello-World"
 
 
-def test_validate_repo_url_valid_with_trailing_slash():
+def test_validate_repo_url_valid_with_trailing_slash(monkeypatch):
     from app import _validate_repo_url
 
+    _allow_private_repo(monkeypatch)
     owner, repo, url = _validate_repo_url("https://github.com/octocat/Hello-World/")
     assert owner == "octocat"
     assert repo == "Hello-World"
@@ -114,6 +121,20 @@ def test_validate_repo_url_rejects_bare_profile():
         _validate_repo_url("https://github.com/skywalker8888")
     assert exc_info.value.status_code == 422
     assert "Invalid GitHub repository URL" in exc_info.value.detail
+
+
+def test_validate_repo_url_rejects_public_repo(monkeypatch):
+    from app import _validate_repo_url
+
+    def reject_public(owner, repo):
+        raise HTTPException(status_code=422, detail="Only private GitHub repositories are supported.")
+
+    monkeypatch.setattr(app_module, "_ensure_private_repo", reject_public)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _validate_repo_url("https://github.com/octocat/Hello-World")
+    assert exc_info.value.status_code == 422
+    assert "Only private GitHub repositories are supported." in exc_info.value.detail
 
 
 # ── Delivery config model tests ───────────────────────────────────────────────
@@ -172,6 +193,7 @@ def test_process_endpoint_returns_schema_validated_result(monkeypatch):
 
 
 def test_process_endpoint_returns_repo_and_delivery_when_provided(monkeypatch):
+    _allow_private_repo(monkeypatch)
     _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
     client = TestClient(app_module.app)
 
@@ -201,6 +223,23 @@ def test_process_endpoint_rejects_list_url(monkeypatch):
 
     assert response.status_code == 422
     assert "repositories list" in response.json()["detail"]
+
+
+def test_process_endpoint_rejects_public_repo(monkeypatch):
+    def reject_public(owner, repo):
+        raise HTTPException(status_code=422, detail="Only private GitHub repositories are supported.")
+
+    monkeypatch.setattr(app_module, "_ensure_private_repo", reject_public)
+    _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
+    client = TestClient(app_module.app)
+
+    response = client.post(
+        "/process",
+        json={"transcript": "hello", "repo_url": "https://github.com/octocat/Hello-World"},
+    )
+
+    assert response.status_code == 422
+    assert "Only private GitHub repositories are supported." in response.json()["detail"]
 
 
 def test_process_endpoint_rejects_schema_invalid_output(monkeypatch):
@@ -246,6 +285,7 @@ def test_stream_endpoint_emits_done_for_schema_valid_output(monkeypatch):
 
 
 def test_stream_endpoint_emits_repo_and_delivery_in_done_event(monkeypatch):
+    _allow_private_repo(monkeypatch)
     chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
     _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
     client = TestClient(app_module.app)

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 import anthropic
+import httpx
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -54,6 +55,56 @@ _GITHUB_REPO_RE = re.compile(
 )
 
 
+def _ensure_private_repo(owner: str, repo: str) -> None:
+    """Reject public GitHub repositories.
+
+    Private repositories can only be confirmed when GitHub API access is
+    available. Without a token, GitHub returns 404 for private repos, so keep
+    accepting those URLs to avoid blocking valid private-repo workflows.
+    """
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "master-dev-prompt",
+    }
+    token = os.getenv("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        response = httpx.get(
+            f"https://api.github.com/repos/{owner}/{repo}",
+            headers=headers,
+            timeout=5.0,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to verify repository visibility with GitHub.",
+        ) from exc
+
+    if response.status_code == 200:
+        if not response.json().get("private", False):
+            raise HTTPException(
+                status_code=422,
+                detail="Only private GitHub repositories are supported.",
+            )
+        return
+
+    if response.status_code == 404 and not token:
+        return
+
+    if response.status_code in {401, 403}:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to verify repository visibility with the current GitHub credentials.",
+        )
+
+    raise HTTPException(
+        status_code=422,
+        detail="Unable to verify that this GitHub repository is private.",
+    )
+
+
 
 def _validate_repo_url(url: str) -> tuple[str, str, str]:
     """Validate a GitHub repository URL and return (owner, repo, normalized_url).
@@ -81,6 +132,7 @@ def _validate_repo_url(url: str) -> tuple[str, str, str]:
             ),
         )
     owner, repo = m.group(1), m.group(2)
+    _ensure_private_repo(owner, repo)
     normalized = f"https://github.com/{owner}/{repo}"
     return owner, repo, normalized
 
