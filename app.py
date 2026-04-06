@@ -64,17 +64,17 @@ def _ensure_private_repo(owner: str, repo: str) -> None:
     can be verified reliably. Once authenticated, 404 and other non-200
     responses are treated as verification failures.
     """
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "master-dev-prompt",
-    }
     token = os.getenv("GITHUB_TOKEN")
     if not token:
         raise HTTPException(
             status_code=503,
             detail="GITHUB_TOKEN is required to verify private GitHub repositories.",
         )
-    headers["Authorization"] = f"Bearer {token}"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "User-Agent": "master-dev-prompt",
+    }
 
     try:
         response = httpx.get(

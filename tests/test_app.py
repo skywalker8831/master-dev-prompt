@@ -135,10 +135,10 @@ def test_validate_repo_url_rejects_bare_profile():
 def test_validate_repo_url_rejects_public_repo(monkeypatch):
     from app import _validate_repo_url
 
-    def reject_public(owner, repo):
+    def always_reject(owner, repo):
         raise HTTPException(status_code=422, detail="Only private GitHub repositories are supported.")
 
-    monkeypatch.setattr(app_module, "_ensure_private_repo", reject_public)
+    monkeypatch.setattr(app_module, "_ensure_private_repo", always_reject)
 
     with pytest.raises(HTTPException) as exc_info:
         _validate_repo_url("https://github.com/octocat/Hello-World")
@@ -308,10 +308,10 @@ def test_process_endpoint_rejects_list_url(monkeypatch):
 
 
 def test_process_endpoint_rejects_public_repo(monkeypatch):
-    def reject_public(owner, repo):
+    def always_reject(owner, repo):
         raise HTTPException(status_code=422, detail="Only private GitHub repositories are supported.")
 
-    monkeypatch.setattr(app_module, "_ensure_private_repo", reject_public)
+    monkeypatch.setattr(app_module, "_ensure_private_repo", always_reject)
     _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
     client = TestClient(app_module.app)
 
