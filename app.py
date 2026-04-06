@@ -62,8 +62,8 @@ def _ensure_private_repo(owner: str, repo: str) -> None:
     When GitHub returns repo metadata, public repos are rejected and private
     repos are allowed. Without a token, GitHub returns 404 for private repos,
     so a 404 is treated as inconclusive and the URL remains allowed to avoid
-    blocking valid private-repo workflows. With a token, non-200 responses are
-    treated as verification failures.
+    blocking valid private-repo workflows. With a token, 404 and other non-200
+    responses are treated as verification failures.
     """
     headers = {
         "Accept": "application/vnd.github+json",
@@ -107,7 +107,7 @@ def _ensure_private_repo(owner: str, repo: str) -> None:
 
     raise HTTPException(
         status_code=422,
-        detail="Unable to verify that this GitHub repository is private.",
+        detail="Repository not found or unable to verify that this GitHub repository is private.",
     )
 
 

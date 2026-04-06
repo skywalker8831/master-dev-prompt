@@ -43,6 +43,15 @@ class _FakeClient:
         self.messages = _FakeMessages(raw_text=raw_text, chunks=chunks)
 
 
+class _FakeResponse:
+    def __init__(self, status_code, payload=None):
+        self.status_code = status_code
+        self._payload = payload or {}
+
+    def json(self):
+        return self._payload
+
+
 def _install_fake_runtime(monkeypatch, fake_client):
     monkeypatch.setattr(
         app_module,
@@ -135,6 +144,14 @@ def test_validate_repo_url_rejects_public_repo(monkeypatch):
         _validate_repo_url("https://github.com/octocat/Hello-World")
     assert exc_info.value.status_code == 422
     assert "Only private GitHub repositories are supported." in exc_info.value.detail
+
+
+def test_ensure_private_repo_accepts_confirmed_private_repo(monkeypatch):
+    from app import _ensure_private_repo
+
+    monkeypatch.setattr(app_module.httpx, "get", lambda *args, **kwargs: _FakeResponse(200, {"private": True}))
+
+    _ensure_private_repo("octocat", "Hello-World")
 
 
 # ── Delivery config model tests ───────────────────────────────────────────────
