@@ -34,6 +34,7 @@ from master_dev_runtime import (
 load_dotenv()
 
 app = FastAPI(title="Master Dev Prompt API")
+_GITHUB_API_BASE_URL = "https://api.github.com"
 
 
 def verify_api_key(x_api_key: Annotated[str | None, Header()] = None) -> None:
@@ -53,7 +54,6 @@ _GITHUB_REPO_RE = re.compile(
     r"([A-Za-z0-9_.-]+?)"                               # repo
     r"(?:\.git)?(?:/.*)?$"
 )
-_GITHUB_API_BASE_URL = "https://api.github.com"
 
 
 def _ensure_private_repo(owner: str, repo: str) -> None:
@@ -106,8 +106,6 @@ def _ensure_private_repo(owner: str, repo: str) -> None:
         status_code=422,
         detail="Repository not found or unable to verify that this GitHub repository is private.",
     )
-
-
 
 def _validate_repo_url(url: str) -> tuple[str, str, str]:
     """Validate a GitHub repository URL and return (owner, repo, normalized_url).
