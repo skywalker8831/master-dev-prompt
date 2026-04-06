@@ -53,14 +53,17 @@ _GITHUB_REPO_RE = re.compile(
     r"([A-Za-z0-9_.-]+?)"                               # repo
     r"(?:\.git)?(?:/.*)?$"
 )
+_GITHUB_API_BASE_URL = "https://api.github.com"
 
 
 def _ensure_private_repo(owner: str, repo: str) -> None:
     """Reject public GitHub repositories.
 
-    Private repositories can only be confirmed when GitHub API access is
-    available. Without a token, GitHub returns 404 for private repos, so keep
-    accepting those URLs to avoid blocking valid private-repo workflows.
+    When GitHub returns repo metadata, public repos are rejected and private
+    repos are allowed. Without a token, GitHub returns 404 for private repos,
+    so a 404 is treated as inconclusive and the URL remains allowed to avoid
+    blocking valid private-repo workflows. With a token, non-200 responses are
+    treated as verification failures.
     """
     headers = {
         "Accept": "application/vnd.github+json",
@@ -72,7 +75,7 @@ def _ensure_private_repo(owner: str, repo: str) -> None:
 
     try:
         response = httpx.get(
-            f"https://api.github.com/repos/{owner}/{repo}",
+            f"{_GITHUB_API_BASE_URL}/repos/{owner}/{repo}",
             headers=headers,
             timeout=5.0,
         )
@@ -91,6 +94,9 @@ def _ensure_private_repo(owner: str, repo: str) -> None:
         return
 
     if response.status_code == 404 and not token:
+        # Without authenticated GitHub API access, both private and nonexistent
+        # repositories resolve to 404. Keep the URL allowed here and let later
+        # repo access steps surface existence/auth errors if needed.
         return
 
     if response.status_code in {401, 403}:

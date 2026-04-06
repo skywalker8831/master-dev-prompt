@@ -51,7 +51,7 @@ def _install_fake_runtime(monkeypatch, fake_client):
     )
 
 
-def _allow_private_repo(monkeypatch):
+def _skip_private_repo_check(monkeypatch):
     monkeypatch.setattr(app_module, "_ensure_private_repo", lambda owner, repo: None)
 
 
@@ -60,7 +60,7 @@ def _allow_private_repo(monkeypatch):
 def test_validate_repo_url_valid(monkeypatch):
     from app import _validate_repo_url
 
-    _allow_private_repo(monkeypatch)
+    _skip_private_repo_check(monkeypatch)
     owner, repo, url = _validate_repo_url("https://github.com/skywalker8831/master-dev-prompt")
     assert owner == "skywalker8831"
     assert repo == "master-dev-prompt"
@@ -70,7 +70,7 @@ def test_validate_repo_url_valid(monkeypatch):
 def test_validate_repo_url_valid_with_git_suffix(monkeypatch):
     from app import _validate_repo_url
 
-    _allow_private_repo(monkeypatch)
+    _skip_private_repo_check(monkeypatch)
     owner, repo, url = _validate_repo_url("https://github.com/octocat/Hello-World.git")
     assert owner == "octocat"
     assert repo == "Hello-World"
@@ -80,7 +80,7 @@ def test_validate_repo_url_valid_with_git_suffix(monkeypatch):
 def test_validate_repo_url_valid_with_trailing_slash(monkeypatch):
     from app import _validate_repo_url
 
-    _allow_private_repo(monkeypatch)
+    _skip_private_repo_check(monkeypatch)
     owner, repo, url = _validate_repo_url("https://github.com/octocat/Hello-World/")
     assert owner == "octocat"
     assert repo == "Hello-World"
@@ -193,7 +193,7 @@ def test_process_endpoint_returns_schema_validated_result(monkeypatch):
 
 
 def test_process_endpoint_returns_repo_and_delivery_when_provided(monkeypatch):
-    _allow_private_repo(monkeypatch)
+    _skip_private_repo_check(monkeypatch)
     _install_fake_runtime(monkeypatch, _FakeClient(raw_text=json.dumps(VALID_RESULT)))
     client = TestClient(app_module.app)
 
@@ -285,7 +285,7 @@ def test_stream_endpoint_emits_done_for_schema_valid_output(monkeypatch):
 
 
 def test_stream_endpoint_emits_repo_and_delivery_in_done_event(monkeypatch):
-    _allow_private_repo(monkeypatch)
+    _skip_private_repo_check(monkeypatch)
     chunks = [json.dumps(VALID_RESULT)[:80], json.dumps(VALID_RESULT)[80:]]
     _install_fake_runtime(monkeypatch, _FakeClient(chunks=chunks))
     client = TestClient(app_module.app)
