@@ -60,9 +60,8 @@ def _ensure_private_repo(owner: str, repo: str) -> None:
     """Reject public GitHub repositories.
 
     When GitHub returns repo metadata, public repos are rejected and private
-    repos are allowed. Without a token, GitHub returns 404 for private repos,
-    so a 404 is treated as inconclusive and the URL remains allowed to avoid
-    blocking valid private-repo workflows. With a token, 404 and other non-200
+    repos are allowed. A GitHub token is required so private repo visibility
+    can be verified reliably. Once authenticated, 404 and other non-200
     responses are treated as verification failures.
     """
     headers = {
@@ -70,8 +69,12 @@ def _ensure_private_repo(owner: str, repo: str) -> None:
         "User-Agent": "master-dev-prompt",
     }
     token = os.getenv("GITHUB_TOKEN")
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+    if not token:
+        raise HTTPException(
+            status_code=503,
+            detail="GITHUB_TOKEN is required to verify private GitHub repositories.",
+        )
+    headers["Authorization"] = f"Bearer {token}"
 
     try:
         response = httpx.get(
@@ -91,12 +94,6 @@ def _ensure_private_repo(owner: str, repo: str) -> None:
                 status_code=422,
                 detail="Only private GitHub repositories are supported.",
             )
-        return
-
-    if response.status_code == 404 and not token:
-        # Without authenticated GitHub API access, both private and nonexistent
-        # repositories resolve to 404. Keep the URL allowed here and let later
-        # repo access steps surface existence/auth errors if needed.
         return
 
     if response.status_code in {401, 403}:

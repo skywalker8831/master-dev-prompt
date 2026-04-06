@@ -168,7 +168,7 @@ uvicorn app:app --reload
 - `GET /health` — liveness check
 
 Optional: set `SERVER_API_KEY` to require an `X-Api-Key` header on all requests.
-If you provide `repo_url`, it must point to a private GitHub repository. Public repositories are rejected.
+If you provide `repo_url`, it must point to a private GitHub repository. Public repositories are rejected, and `GITHUB_TOKEN` must be set so the server can verify private repo visibility through the GitHub API.
 
 ### Minimal SDK snippet
 

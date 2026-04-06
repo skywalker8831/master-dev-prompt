@@ -149,9 +149,74 @@ def test_validate_repo_url_rejects_public_repo(monkeypatch):
 def test_ensure_private_repo_accepts_confirmed_private_repo(monkeypatch):
     from app import _ensure_private_repo
 
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
     monkeypatch.setattr(app_module.httpx, "get", lambda *args, **kwargs: _FakeResponse(200, {"private": True}))
 
     _ensure_private_repo("octocat", "Hello-World")
+
+
+def test_ensure_private_repo_requires_github_token(monkeypatch):
+    from app import _ensure_private_repo
+
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ensure_private_repo("octocat", "Hello-World")
+    assert exc_info.value.status_code == 503
+    assert "GITHUB_TOKEN is required" in exc_info.value.detail
+
+
+def test_ensure_private_repo_rejects_confirmed_public_repo(monkeypatch):
+    from app import _ensure_private_repo
+
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setattr(app_module.httpx, "get", lambda *args, **kwargs: _FakeResponse(200, {"private": False}))
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ensure_private_repo("octocat", "Hello-World")
+    assert exc_info.value.status_code == 422
+    assert "Only private GitHub repositories are supported." in exc_info.value.detail
+
+
+@pytest.mark.parametrize("status_code", [401, 403])
+def test_ensure_private_repo_handles_auth_failures(monkeypatch, status_code):
+    from app import _ensure_private_repo
+
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setattr(app_module.httpx, "get", lambda *args, **kwargs: _FakeResponse(status_code))
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ensure_private_repo("octocat", "Hello-World")
+    assert exc_info.value.status_code == 502
+    assert "current GitHub credentials" in exc_info.value.detail
+
+
+def test_ensure_private_repo_handles_httpx_errors(monkeypatch):
+    from app import _ensure_private_repo
+
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+
+    def raise_http_error(*args, **kwargs):
+        raise app_module.httpx.HTTPError("boom")
+
+    monkeypatch.setattr(app_module.httpx, "get", raise_http_error)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ensure_private_repo("octocat", "Hello-World")
+    assert exc_info.value.status_code == 502
+    assert "Unable to verify repository visibility with GitHub." in exc_info.value.detail
+
+
+def test_ensure_private_repo_rejects_unknown_visibility_status(monkeypatch):
+    from app import _ensure_private_repo
+
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setattr(app_module.httpx, "get", lambda *args, **kwargs: _FakeResponse(404))
+
+    with pytest.raises(HTTPException) as exc_info:
+        _ensure_private_repo("octocat", "Hello-World")
+    assert exc_info.value.status_code == 422
+    assert "Repository not found or unable to verify" in exc_info.value.detail
 
 
 # ── Delivery config model tests ───────────────────────────────────────────────
