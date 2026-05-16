@@ -26,6 +26,97 @@ One prompt. One Claude call. Full engineering package from any transcript.
 
 ---
 
+## Architecture & Code Organization
+
+### Key Technologies
+
+| Technology | Role |
+|---|---|
+| **Python 3.11+** | Core runtime, API server, watcher, and test suite |
+| **Anthropic SDK** | Python client for calling Claude models via API |
+| **FastAPI** | HTTP API server with sync and streaming endpoints |
+| **uvicorn** | ASGI server that runs the FastAPI application |
+| **Watchdog** | File system event monitoring for the autopilot watcher |
+| **pytest** | Test framework for all Python unit and integration tests |
+| **python-dotenv** | Loads `.env` files for local API key management |
+| **GitHub Actions** | CI/CD pipeline — runs `make ci` on every push and PR |
+
+### How the Components Fit Together
+
+The repository is organized around a single shared runtime module:
+
+```
+master_dev_runtime.py          ← shared core: prompt loading, JSON parsing, schema validation
+    ↑              ↑              ↑
+app.py        watcher.py    validate_output.py
+(FastAPI)     (autopilot)   (CLI validator)
+                ↑
+        run_master_dev.sh / batch_run_master_dev.sh
+        (shell wrappers calling claude or codex CLIs)
+```
+
+**`master_dev_runtime.py`** is the single source of truth for:
+- Loading and caching `master_dev_prompt.txt`
+- Formatting user messages for Claude
+- Strict JSON schema validation against the five-section output schema
+
+All other Python components import from it — they are thin layers that add a delivery mechanism (HTTP endpoint, file watcher, or CLI) without duplicating validation logic.
+
+### Data Flow
+
+```
+Input: transcript (.txt file or POST request body)
+         │
+         ▼
+  master_dev_prompt.txt  +  transcript
+         │
+         ▼  (piped to claude/codex CLI, or called via Anthropic SDK)
+  Raw JSON string from model
+         │
+         ▼
+  master_dev_runtime.parse_and_validate_output()
+         │
+         ├─── valid   → structured dict / writes <name>.json
+         └─── invalid → ValidationError / writes <name>.invalid.json
+```
+
+### Output Schema
+
+Every successful run produces a single JSON object with exactly five top-level keys:
+
+| Key | Contents |
+|---|---|
+| `design_doc` | context, requirements, architecture, alternatives, decisions, open questions |
+| `pm_summary` | plain-language overview, scope, timeline implications |
+| `actions` | task list with owner, priority (`low`/`medium`/`high`), and type |
+| `implementation_plan` | milestones with ETA + risks, tech tasks with area and complexity (`S`/`M`/`L`) |
+| `code_suggestions` | detected language, stack context, runnable code snippets |
+
+Schema validation is strict: required keys must match exactly, list fields must contain at least one item, and enum fields must use the exact allowed values.
+
+### Directory Layout
+
+```
+.
+├── master_dev_prompt.txt        # System prompt — defines Claude's role and output schema
+├── master_dev_runtime.py        # Shared runtime: prompt loading + schema validation
+├── validate_output.py           # CLI thin wrapper around the shared runtime
+├── app.py                       # FastAPI server (POST /process, POST /process/stream, GET /)
+├── watcher.py                   # Autopilot file watcher (watchdog-based)
+├── run_master_dev.sh            # Single-transcript shell runner (claude or codex CLI)
+├── batch_run_master_dev.sh      # Batch runner for all files in transcripts/
+├── Makefile                     # CI shortcuts (validate-file, validate-outputs, ci)
+├── requirements.txt             # Python dependencies
+├── tests/                       # pytest suite (runtime, app, watcher)
+├── ci/fixtures/                 # Fixture JSON used by make test-validator
+├── transcripts/                 # Input transcript files
+├── outputs/                     # Generated JSON outputs (gitignored)
+├── static/index.html            # Terminal-style browser UI
+└── .github/workflows/           # GitHub Actions CI/CD definitions
+```
+
+---
+
 ## Usage
 
 ### 1. Make the script executable (first time only)
